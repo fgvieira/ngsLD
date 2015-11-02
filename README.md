@@ -54,7 +54,8 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--verbose INT`: selects verbosity level. [1]
 
 ### Input data
-As input `ngsLD` needs a Genotype Likelihood (GL) file, formatted as __3\*n_ind\*n_sites__, either as gziped TSV or binary doubles.
+As input, `ngsLD` accepts both genotypes, genotype likelihoods (GP) or genotype posterior probabilities (GP). Genotypes must be input as gziped TSV with one row per site and one column per individual (__n_sites\*n_ind__) and genotypes coded as [-1, 0, 1, 2].
+As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 columns per individual (__3\*n_sites\*n_ind__) and, in the case of the binary, the GL/GP coded as doubles
 
 ### Thread pool
 The thread pool	implementation was adapted from Mathias Brossard's and is freely available from:

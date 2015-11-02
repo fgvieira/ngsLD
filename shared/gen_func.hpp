@@ -37,6 +37,7 @@ void catch_SIG();
 double check_interv(double, bool);
 int array_max_pos(double*, int);
 int array_min_pos(double*, int);
+void transp_matrix(void*, void*, uint64_t, uint64_t);
 double draw_rnd(gsl_rng*, uint64_t, uint64_t);
 bool miss_data(double*);
 void call_geno(double*, int, bool = true, double = 0, double = 0, int = 0);
