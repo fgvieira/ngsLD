@@ -26,7 +26,7 @@ typedef struct {
   uint verbose;
 
   double ***geno_lkl; // n_ind * n_sites+1 * N_GENO
-  double *pos_dist;   // n_sites+1
+  double *pos_dist;      // n_sites+1
 
   double** expected_geno; // n_ind * n_sites+1
   double** matrixLD;      // n_sites+1 * n_sites+1
@@ -47,3 +47,6 @@ void parse_cmd_args(params*, int, char**);
 
 void calc_pair_LD (void*);
 double pearson_r (double*, double*, uint64_t);
+double bcf_pair_LD (double**, double**, uint64_t);
+int pair_freq_iter(int, double*, double*, double*);
+double est_freq(int, const double*);
