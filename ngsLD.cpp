@@ -33,7 +33,7 @@ int main (int argc, char** argv) {
   parse_cmd_args(pars, argc, argv);
 
   if(pars->version) {
-    printf("ngsLD v%s\nCompiled on %s @ %s", version, __DATE__, __TIME__);
+    fprintf(stderr, "ngsLD v%s\nCompiled on %s @ %s", version, __DATE__, __TIME__);
     exit(0);
   }
 
@@ -49,11 +49,11 @@ int main (int argc, char** argv) {
 
   if(strcmp(strrchr(pars->in_geno, '.'), ".gz") == 0){
     if(pars->verbose >= 1)
-      printf("==> GZIP input file (not BINARY)\n");
+      fprintf(stderr, "==> GZIP input file (not BINARY)\n");
     pars->in_bin = false;
   }else if(pars->n_sites == st.st_size/sizeof(double)/pars->n_ind/N_GENO){
     if(pars->verbose >= 1)
-      printf("==> BINARY input file (always lkl)\n");
+      fprintf(stderr, "==> BINARY input file (always lkl)\n");
     pars->in_bin = true;
     pars->in_probs = true;
   }else
@@ -65,22 +65,26 @@ int main (int argc, char** argv) {
   // Declare and initialize output variables //
   /////////////////////////////////////////////
   pars->expected_geno = init_ptr(pars->n_sites+1, pars->n_ind, (double) -1);
-  pars->matrixLD = init_ptr(pars->n_sites+1, pars->n_sites+1, (double) 0);
+  pars->geno_lkl = init_ptr(pars->n_sites+1, pars->n_ind * N_GENO, (double) -1);
   pth_struct **pth = new pth_struct*[pars->n_sites+1];
-
-
+  // Open filehandle
+  if(pars->out != NULL)
+    pars->out_fh = fopen(pars->out, "w");
+  if(pars->out_fh == NULL)
+    error(__FUNCTION__, "cannot open output file!");
+  
 
   /////////////////////
   // Read input data //
   /////////////////////
   // Read data from GENO file
   if(pars->verbose >= 1)
-    printf("> Reading data from file...\n");
-  pars->geno_lkl = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, pars->in_logscale, pars->n_ind, pars->n_sites);
+    fprintf(stderr, "> Reading data from file...\n");
+  pars->in_geno_lkl = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, pars->in_logscale, pars->n_ind, pars->n_sites);
 
   // Read positions from file
   if(pars->verbose >= 1)
-    printf("==> Getting sites coordinates\n");
+    fprintf(stderr, "==> Getting sites coordinates\n");
   if(pars->pos)
     pars->pos_dist = read_pos(pars->pos, pars->n_sites);
   else
@@ -88,19 +92,25 @@ int main (int argc, char** argv) {
   // Convert position distances to Kb
   for(uint64_t s = 1; s <= pars->n_sites; s++)
     pars->pos_dist[s] /= 1e3;
+  // Read labels
+  if(read_file(pars->pos, &pars->labels) != pars->n_sites)
+    error(__FUNCTION__, "number of labels does not match number of sites!");
 
   // Data pre-processing...
   for(uint64_t i = 0; i < pars->n_ind; i++)
     for(uint64_t s = 1; s <= pars->n_sites; s++){
       // Call genotypes
       if(pars->call_geno)
-	call_geno(pars->geno_lkl[i][s], N_GENO);
+	call_geno(pars->in_geno_lkl[i][s], N_GENO);
 
       // Convert to normal space
-      conv_space(pars->geno_lkl[i][s], N_GENO, exp);
+      conv_space(pars->in_geno_lkl[i][s], N_GENO, exp);
 
       // Caclulate expected genotypes
-      pars->expected_geno[s][i] = pars->geno_lkl[i][s][1] + 2*pars->geno_lkl[i][s][2];
+      pars->expected_geno[s][i] = pars->in_geno_lkl[i][s][1] + 2*pars->in_geno_lkl[i][s][2];
+
+      // Convert matrix format
+      memcpy(&pars->geno_lkl[s][i*N_GENO], pars->in_geno_lkl[i][s], N_GENO * sizeof(double));
     }
   
 
@@ -109,7 +119,7 @@ int main (int argc, char** argv) {
   // Analyze Data //
   //////////////////
   if(pars->verbose >= 1)
-    printf("==> Launching threads...\n");
+    fprintf(stderr, "==> Launching threads...\n");
 
   // Create thread pool
   if( (pars->thread_pool = threadpool_create(pars->n_threads, pars->n_sites, 0)) == NULL )
@@ -120,8 +130,6 @@ int main (int argc, char** argv) {
     pth[s1] = new pth_struct;
     pth[s1]->pars = pars;
     pth[s1]->site = s1;
- 
-    //calc_pair_LD((void*) pth[s1]);
 
     // Add task to thread pool
     int ret = threadpool_add(pars->thread_pool, calc_pair_LD, (void*) pth[s1], 0);
@@ -143,7 +151,7 @@ int main (int argc, char** argv) {
   // Wait for all threads //
   //////////////////////////
   if(pars->verbose >= 1)
-    printf("==> Waiting for all threads to finish...\n");
+    fprintf(stderr, "==> Waiting for all threads to finish...\n");
   
   threadpool_wait(pars->thread_pool, 0.1);
   if(threadpool_destroy(pars->thread_pool, threadpool_graceful) != 0)
@@ -151,47 +159,23 @@ int main (int argc, char** argv) {
 
 
 
-  //////////////////
-  // Print Matrix //
-  //////////////////
-  if(pars->verbose >= 1)
-    printf("==> Printing LD results...\n");
-
-  char **labels;
-  if(read_file(pars->pos, &labels) != pars->n_sites)
-    error(__FUNCTION__, "number of labels does not match number of sites!");
-
-  FILE* out_fh = fopen(pars->out, "w");
-  if(out_fh == NULL)
-    error(__FUNCTION__, "cannot open output file!");
-
-  for(uint64_t s1 = 1; s1 <= pars->n_sites; s1++)
-    for(uint64_t s2 = s1+1; s2 <= pars->n_sites; s2++)
-      if(pars->matrixLD[s1][s2] >= pars->min_r2 && pars->matrixLD[s2][s1] > 0)
-	fprintf(out_fh, "%s\t%s\t%f\t%f\n", labels[s1-1], labels[s2-1], pars->matrixLD[s1][s2], pars->matrixLD[s2][s1]);
-
-  fclose(out_fh);
-
-
-
   /////////////////
   // Free Memory //
   /////////////////
   if(pars->verbose >= 1)
-    printf("==> Freeing memory...\n");
+    fprintf(stderr, "==> Freeing memory...\n");
 
-  // pars struct
+  fclose(pars->out_fh);
   //free_ptr((void*) pars->in_geno);
-  free_ptr((void***) pars->geno_lkl, pars->n_ind, pars->n_sites+1);
+  free_ptr((void***) pars->in_geno_lkl, pars->n_ind, pars->n_sites+1);
+  free_ptr((void**) pars->geno_lkl, pars->n_sites+1);
+  free_ptr((void**) pars->expected_geno, pars->n_sites+1);
+  free_ptr((void**) pars->labels, pars->n_sites);
   free_ptr((void*) pars->pos_dist);
   free_ptr((void**) pth);
-  free_ptr((void**) pars->expected_geno, pars->n_sites+1);
-  free_ptr((void**) pars->matrixLD, pars->n_sites+1);
-  free_ptr((void**) labels, pars->n_sites);
-  
 
   if(pars->verbose >= 1)
-    printf("Done!\n");
+    fprintf(stderr, "Done!\n");
   delete pars;
 
   return 0;
@@ -206,6 +190,7 @@ void calc_pair_LD (void *pth){
   uint64_t s1 = p->site;
   uint64_t s2 = s1;
   double dist = 0;
+  double r2_ExpGeno = 0;
 
   // Calc LD for pairs of SNPs < max_dist
   do{
@@ -215,15 +200,16 @@ void calc_pair_LD (void *pth){
     if(p->pars->max_dist != -1 && dist >= p->pars->max_dist)
       break;
 
-    if(1){
-      p->pars->matrixLD[s1][s2] = pearson_r(p->pars->expected_geno[s1], p->pars->expected_geno[s2], p->pars->n_ind);
-      //    }else{
-      //      p->pars->matrixLD[s1][s2] = bcf_pair_LD(p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->n_ind);
-    }
-    p->pars->matrixLD[s2][s1] = dist;
-
-    if(p->pars->verbose > 7)
-      printf("\t%lu <=> %lu: %f (%f)\n", s1, s2, p->pars->matrixLD[s1][s2], dist);
+    if(!isnan(r2_ExpGeno))
+      fprintf(p->pars->out_fh, "%s\t%s\t%f\t%f\t%f\t%f\t%f\n", 
+	      p->pars->labels[s1-1],
+	      p->pars->labels[s2-1],
+	      dist,
+	      pearson_r(p->pars->expected_geno[s1], p->pars->expected_geno[s2], p->pars->n_ind),
+	      bcf_pair_LD(p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->n_ind),
+	      100.0,
+	      100.0
+	      );
   } while (s2 < p->pars->n_sites);
 
   delete p;
@@ -234,7 +220,7 @@ void calc_pair_LD (void *pth){
 
 
 double pearson_r (double *s1, double *s2, uint64_t n_ind){
-  return gsl_stats_correlation(s1, 1, s2, 1, n_ind);
+  return pow(gsl_stats_correlation(s1, 1, s2, 1, n_ind), 2);
 }
 
 
@@ -276,7 +262,7 @@ double bcf_pair_LD (double *s1, double *s2, uint64_t n_ind)
   p[1] = f[0] + f[2];
   D = f[0] * f[3] - f[1] * f[2];
   r = sqrt(D * D / (p[0] * p[1] * (1-p[0]) * (1-p[1])));
-  //printf("R(%lf,%lf,%lf,%lf)=%lf\n", f[0], f[1], f[2], f[3], r);
+  //fprintf(stderr, "R(%lf,%lf,%lf,%lf)=%lf\n", f[0], f[1], f[2], f[3], r);
 
   if(isnan(r))
     r = -1.0;
@@ -294,7 +280,7 @@ int pair_freq_iter(int n, double *s1, double *s2, double f[4])
 {
   double ff[4];
   int i, k, h;
-  //printf("%lf,%lf,%lf,%lf\n", f[0], f[1], f[2], f[3]);
+  //fprintf(stderr, "%lf,%lf,%lf,%lf\n", f[0], f[1], f[2], f[3]);
   memset(ff, 0, 4 * sizeof(double));
   for (i = 0; i < n; ++i) {
     double *p[2], sum, tmp;
