@@ -99,7 +99,7 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
 
   if(pars->verbose >= 1) {
     fprintf(stderr, "==> Input Arguments:\n");
-    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s\n\tmax_dist (kb): %.03f\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\tout: %s\n\tn_threads: %d\n\tversion: %s\n\tverbose: %d\n\n",
+    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s\n\tmax_dist (kb): %lu\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\tout: %s\n\tn_threads: %d\n\tversion: %s\n\tverbose: %d\n\n",
            pars->in_geno,
 	   pars->in_probs ? "true":"false",
            pars->in_logscale ? "true":"false",
@@ -130,12 +130,10 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
     error(__FUNCTION__, "number of individuals (--n_ind) missing!");
   if(pars->n_sites == 0)
     error(__FUNCTION__, "number of sites (--n_sites) missing!");
-  if(pars->pos == NULL && pars->max_dist > -1)
+  if(pars->pos == NULL && pars->max_dist > 0)
     error(__FUNCTION__, "position file necessary in order to filter by maximum distance!");
   if(pars->call_geno && !pars->in_probs)
     error(__FUNCTION__, "can only call genotypes from likelihoods/probabilities!");
-  //  if(pars->out == NULL)
-  //    error(__FUNCTION__, "output prefix (--out) missing!");
   if(pars->n_threads < 1)
     error(__FUNCTION__, "number of threads cannot be less than 1!");
 }

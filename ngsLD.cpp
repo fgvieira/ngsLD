@@ -72,7 +72,9 @@ int main (int argc, char** argv) {
     pars->out_fh = fopen(pars->out, "w");
   if(pars->out_fh == NULL)
     error(__FUNCTION__, "cannot open output file!");
-  
+  fprintf(pars->out_fh, "#chr\tsite1\tchr\tsite2\tdist\tr^2_ExpG\tr^2\tD\tD'\n");
+
+
 
   /////////////////////
   // Read input data //
@@ -89,9 +91,6 @@ int main (int argc, char** argv) {
     pars->pos_dist = read_pos(pars->pos, pars->n_sites);
   else
     pars->pos_dist = init_ptr(pars->n_sites+1, INFINITY);
-  // Convert position distances to Kb
-  for(uint64_t s = 1; s <= pars->n_sites; s++)
-    pars->pos_dist[s] /= 1e3;
   // Read labels
   if(read_file(pars->pos, &pars->labels) != pars->n_sites)
     error(__FUNCTION__, "number of labels does not match number of sites!");
@@ -189,27 +188,31 @@ void calc_pair_LD (void *pth){
   pth_struct* p = (pth_struct*) pth;
   uint64_t s1 = p->site;
   uint64_t s2 = s1;
-  double dist = 0;
-  double r2_ExpGeno = 0;
+  uint64_t dist = 0;
+  double LD_GL[3];
 
   // Calc LD for pairs of SNPs < max_dist
   do{
     s2++;
-    dist += p->pars->pos_dist[s2];
+    dist += (uint64_t) p->pars->pos_dist[s2];
+
+    if(p->pars->verbose > 8)
+      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%lu\t%s\t%s\n", s1, p->pars->labels[s1-1], s2, p->pars->labels[s2-1], dist, join(p->pars->expected_geno[s1],p->pars->n_ind,","), join(p->pars->expected_geno[s2],p->pars->n_ind,","));
     
-    if(p->pars->max_dist != -1 && dist >= p->pars->max_dist)
+    if(p->pars->max_dist > 0 && dist >= p->pars->max_dist*1000)
       break;
 
-    if(!isnan(r2_ExpGeno))
-      fprintf(p->pars->out_fh, "%s\t%s\t%f\t%f\t%f\t%f\t%f\n", 
-	      p->pars->labels[s1-1],
-	      p->pars->labels[s2-1],
-	      dist,
-	      pearson_r(p->pars->expected_geno[s1], p->pars->expected_geno[s2], p->pars->n_ind),
-	      bcf_pair_LD(p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->n_ind),
-	      100.0,
-	      100.0
-	      );
+    bcf_pair_LD(LD_GL, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->n_ind);
+
+    fprintf(p->pars->out_fh, "%s\t%s\t%lu\t%f\t%f\t%f\t%f\n",
+	    p->pars->labels[s1-1],
+	    p->pars->labels[s2-1],
+	    dist,
+	    pearson_r(p->pars->expected_geno[s1], p->pars->expected_geno[s2], p->pars->n_ind),
+	    LD_GL[0],
+	    LD_GL[1],
+	    LD_GL[2]
+	    );
   } while (s2 < p->pars->n_sites);
 
   delete p;
@@ -231,7 +234,7 @@ double pearson_r (double *s1, double *s2, uint64_t n_ind){
 
 // Adapted from BCFTOOLS:
 // https://github.com/lh3/samtools/blob/6bbe1609e10f27796e5bf29ac3207bb2e35ceac8/bcftools/em.c#L266-L310
-double bcf_pair_LD (double *s1, double *s2, uint64_t n_ind)
+void bcf_pair_LD (double LD[3], double *s1, double *s2, uint64_t n_ind)
 {
   double f[4], flast[4], f0[2];
 
@@ -257,17 +260,23 @@ double bcf_pair_LD (double *s1, double *s2, uint64_t n_ind)
   }
 
   // calculate r^2
-  double r, D, p[2];
+  double r2, D, Dp, p[2];
   p[0] = f[0] + f[1];
   p[1] = f[0] + f[2];
-  D = f[0] * f[3] - f[1] * f[2];
-  r = sqrt(D * D / (p[0] * p[1] * (1-p[0]) * (1-p[1])));
-  //fprintf(stderr, "R(%lf,%lf,%lf,%lf)=%lf\n", f[0], f[1], f[2], f[3], r);
+  D = f[0] * f[3] - f[1] * f[2]; // P_AB * P_BA - P_AA * P_BB
+  // or
+  //D = f[0] - p[0] * p[1];      // P_AB - P_A * P_B
+  Dp = D / (D < 0 ? min(p[0]*p[1], (1-p[0])*(1-p[1])) : min(p[0]*(1-p[1]), (1-p[0])*p[1]) );
+  r2 = pow(D / sqrt(p[0] * p[1] * (1-p[0]) * (1-p[1])), 2);
 
+  /*
   if(isnan(r))
     r = -1.0;
-  
-  return r;
+  */
+
+  LD[0] = r2;
+  LD[1] = D;
+  LD[2] = Dp;
 }
 
 

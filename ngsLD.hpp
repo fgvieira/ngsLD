@@ -15,7 +15,7 @@ typedef struct {
   uint64_t n_ind;
   uint64_t n_sites;
   char *pos;
-  double max_dist;
+  uint64_t max_dist;
   bool call_geno;
   double N_thresh;
   double call_thresh;
@@ -48,6 +48,6 @@ void parse_cmd_args(params*, int, char**);
 
 void calc_pair_LD (void*);
 double pearson_r (double*, double*, uint64_t);
-double bcf_pair_LD (double*, double*, uint64_t);
+void bcf_pair_LD (double*, double*, double*, uint64_t);
 int pair_freq_iter(int, double*, double*, double*);
 double est_freq(int, const double*);
