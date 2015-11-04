@@ -1,10 +1,9 @@
-f8275a590b02ca9d9d9954d1d7fdcc39  testLD_2.ld
-d9dcaa3a1d1bcfcf5a8687bafdade028  testLD_32-CGf.ld
-d9dcaa3a1d1bcfcf5a8687bafdade028  testLD_32-CG.ld
+2d825eccf5a5dfa7f3071debf0f0e456  testLD_32-CGf.ld
+2d825eccf5a5dfa7f3071debf0f0e456  testLD_32-CG.ld
 9a46a6e8cce8b241fe51a5f5c21b34ee  testLD_32.geno
-c43983284e05552dcb43ec049c58f5ce  testLD_32.ld
-d9dcaa3a1d1bcfcf5a8687bafdade028  testLD_8-CGf.ld
-d9dcaa3a1d1bcfcf5a8687bafdade028  testLD_8-CG.ld
-19a51f33242110e9b9c18c5b01439499  testLD_8.ld
+63ab6d741fb9d29f5a41a8f5ac393441  testLD_32.ld
+2d825eccf5a5dfa7f3071debf0f0e456  testLD_8-CGf.ld
+2d825eccf5a5dfa7f3071debf0f0e456  testLD_8-CG.ld
+787db196193e3f4b5c3dfc9b798147ed  testLD_8.ld
 3820ca8dda5fc1c74ef7f64e8cb2b1c8  testLD.pos
-eba94ac02eacf543ed7d63a7d8cdc2b6  testLD_T.ld
+10514c7fe3eabb862dd6fcd61d96352d  testLD_T.ld

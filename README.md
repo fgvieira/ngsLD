@@ -39,16 +39,15 @@ Executables are built into the main directory. If you wish to clean all binaries
 #### Parameters
 * `--geno FILE`: input file with genotypes, genotype likelihoods or genotype posterior probabilities.
 * `--probs`: is the input genotype probabilities (likelihoods or posteriors)?
-* `--log_scale`: is the input in log-scale?.
+* `--log_scale`: is the input in log-scale?
 * `--n_ind INT`: sample size (number of individuals).
 * `--n_sites INT`: total number of sites.
 * `--pos` FILE: input file with site coordinates
-* `--max_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD [100]
-* `--min_r2`: minimum r^2 value to output [0.5]
+* `--max_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. If set to 0 (zero) will perform all comparisons. [100]
 * `--call_geno`: call genotypes before running analyses.
 * `--N_thresh DOUBLE`: minimum threshold to consider site; missing data if otherwise (assumes -call_geno) 
 * `--call_thresh DOUBLE`: minimum threshold to call genotype; left as is if otherwise (assumes -call_geno)
-* `--out FILE`: output file name.
+* `--out FILE`: output file name. [stdout]
 * `--n_threads INT`: number of threads to use. [1]
 * `--version`: prints program version and exits.
 * `--verbose INT`: selects verbosity level. [1]
@@ -56,6 +55,8 @@ Executables are built into the main directory. If you wish to clean all binaries
 ### Input data
 As input, `ngsLD` accepts both genotypes, genotype likelihoods (GP) or genotype posterior probabilities (GP). Genotypes must be input as gziped TSV with one row per site and one column per individual (__n_sites\*n_ind__) and genotypes coded as [-1, 0, 1, 2].
 As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 columns per individual (__3\*n_sites\*n_ind__) and, in the case of the binary, the GL/GP coded as doubles
+
+It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
 ### Thread pool
 The thread pool	implementation was adapted from Mathias Brossard's and is freely available from:
