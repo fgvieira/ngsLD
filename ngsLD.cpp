@@ -72,7 +72,7 @@ int main (int argc, char** argv) {
     pars->out_fh = fopen(pars->out, "w");
   if(pars->out_fh == NULL)
     error(__FUNCTION__, "cannot open output file!");
-  fprintf(pars->out_fh, "#chr\tsite1\tchr\tsite2\tdist\tr^2_ExpG\tr^2\tD\tD'\n");
+  //fprintf(pars->out_fh, "#chr\tsite1\tchr\tsite2\tdist\tr^2_ExpG\tD\tD'\tr^2\n");
 
 
 
@@ -188,23 +188,30 @@ void calc_pair_LD (void *pth){
   pth_struct* p = (pth_struct*) pth;
   uint64_t s1 = p->site;
   uint64_t s2 = s1;
-  uint64_t dist = 0;
+  double dist = 0;
   double LD_GL[3];
 
   // Calc LD for pairs of SNPs < max_dist
   do{
     s2++;
-    dist += (uint64_t) p->pars->pos_dist[s2];
+    dist += p->pars->pos_dist[s2];
 
     if(p->pars->verbose > 8)
-      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%lu\t%s\t%s\n", s1, p->pars->labels[s1-1], s2, p->pars->labels[s2-1], dist, join(p->pars->expected_geno[s1],p->pars->n_ind,","), join(p->pars->expected_geno[s2],p->pars->n_ind,","));
+      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%.0f\t%s\t%s\n", s1, p->pars->labels[s1-1], s2, p->pars->labels[s2-1], dist, join(p->pars->expected_geno[s1],p->pars->n_ind,","), join(p->pars->expected_geno[s2],p->pars->n_ind,","));
     
     if(p->pars->max_dist > 0 && dist >= p->pars->max_dist*1000)
       break;
 
     bcf_pair_LD(LD_GL, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->n_ind);
 
-    fprintf(p->pars->out_fh, "%s\t%s\t%lu\t%f\t%f\t%f\t%f\n",
+    /*
+    if( LD_GL[0] < 0.1 ){
+      fprintf(p->pars->out_fh, "%s\t%s\t%lu\n", p->pars->labels[s1-1], p->pars->labels[s2-1], dist);
+      break;
+    }
+    */
+
+    fprintf(p->pars->out_fh, "%s\t%s\t%.0f\t%f\t%f\t%f\t%f\n",
 	    p->pars->labels[s1-1],
 	    p->pars->labels[s2-1],
 	    dist,
@@ -270,13 +277,13 @@ void bcf_pair_LD (double LD[3], double *s1, double *s2, uint64_t n_ind)
   r2 = pow(D / sqrt(p[0] * p[1] * (1-p[0]) * (1-p[1])), 2);
 
   /*
-  if(isnan(r))
-    r = -1.0;
+  if(isnan(r2))
+    r2 = -1.0;
   */
 
-  LD[0] = r2;
-  LD[1] = D;
-  LD[2] = Dp;
+  LD[0] = D;
+  LD[1] = Dp;
+  LD[2] = r2;
 }
 
 
