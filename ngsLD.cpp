@@ -61,11 +61,15 @@ int main (int argc, char** argv) {
 
 
 
-  /////////////////////////////////////////////
-  // Declare and initialize output variables //
-  /////////////////////////////////////////////
+  ////////////////////
+  // Prepare output //
+  ////////////////////
+  // Initialize output variables
   pars->expected_geno = init_ptr(pars->n_sites+1, pars->n_ind, (double) -1);
-  pth_struct **pth = new pth_struct*[pars->n_sites+1];
+  // Initialize random seed generator
+  gsl_rng* rnd_gen = gsl_rng_alloc(gsl_rng_taus);
+  gsl_rng_set(rnd_gen, pars->seed);
+  
   // Open filehandle
   if(pars->out != NULL)
     pars->out_fh = fopen(pars->out, "w");
@@ -130,12 +134,17 @@ int main (int argc, char** argv) {
   // Create thread pool
   if( (pars->thread_pool = threadpool_create(pars->n_threads, pars->n_sites, 0)) == NULL )
     error(__FUNCTION__, "failed to create thread pool!");
+  // Allocate memory for array of pthread structures
+  pth_struct **pth = new pth_struct*[pars->n_sites+1];
 
   for(uint64_t s1 = 1; s1 < pars->n_sites; s1++){
     // Fill in pthread structure
     pth[s1] = new pth_struct;
     pth[s1]->pars = pars;
     pth[s1]->site = s1;
+    // Since ngsLD is threaded, in order for the results to be replicable, each thread has its own random number generator.
+    pth[s1]->rnd_gen = gsl_rng_alloc(gsl_rng_taus);
+    gsl_rng_set(pth[s1]->rnd_gen, draw_rnd(rnd_gen, 0, INF));
 
     // Add task to thread pool
     int ret = threadpool_add(pars->thread_pool, calc_pair_LD, (void*) pth[s1], 0);
@@ -173,11 +182,12 @@ int main (int argc, char** argv) {
 
   fclose(pars->out_fh);
   //free_ptr((void*) pars->in_geno);
-  free_ptr((void**) pars->geno_lkl, pars->n_sites+1);
+  free_ptr((void***) pars->geno_lkl, pars->n_sites+1, pars->n_ind);
   free_ptr((void**) pars->expected_geno, pars->n_sites+1);
   free_ptr((void**) pars->labels, pars->n_sites);
   free_ptr((void*) pars->pos_dist);
   free_ptr((void**) pth);
+  gsl_rng_free(rnd_gen);
 
   if(pars->verbose >= 1)
     fprintf(stderr, "Done!\n");
@@ -204,19 +214,21 @@ void calc_pair_LD (void *pth){
 
     if(p->pars->verbose > 8)
       fprintf(stderr, "%lu\t%s\t%lu\t%s\t%.0f\t%s\t%s\n", s1, p->pars->labels[s1-1], s2, p->pars->labels[s2-1], dist, join(p->pars->expected_geno[s1],p->pars->n_ind,","), join(p->pars->expected_geno[s2],p->pars->n_ind,","));
-    
+
+    // Stop if current distance is greater than max_dist
     if(p->pars->max_dist > 0 && dist >= p->pars->max_dist*1000)
       break;
+
+    // Random sampling
+    if(draw_rnd(p->rnd_gen, 0, 1) > p->pars->rnd_sample)
+      continue;
 
     // Calculate LD using bcftools algorithm
     bcf_pair_LD(LD_GL, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->n_ind);
 
-    /*
-    if( isnan(LD_GL[1]) && isnan(LD_GL[2]) ){
-      //fprintf(p->pars->out_fh, "%s\t%s\t%.0f\n", p->pars->labels[s1-1], p->pars->labels[s2-1], dist);
+    // If sampling, also skip nan
+    if(p->pars->rnd_sample != 1 && isnan(LD_GL[1]) && isnan(LD_GL[2]) )
       continue;
-    }
-    */
 
     fprintf(p->pars->out_fh, "%s\t%s\t%.0f\t%f\t%f\t%f\t%f\n",
 	    p->pars->labels[s1-1],
@@ -229,6 +241,8 @@ void calc_pair_LD (void *pth){
 	    );
   } while (s2 < p->pars->n_sites);
 
+  // Free memory
+  gsl_rng_free(p->rnd_gen);
   delete p;
 }
 

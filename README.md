@@ -42,11 +42,13 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--log_scale`: is the input in log-scale?
 * `--n_ind INT`: sample size (number of individuals).
 * `--n_sites INT`: total number of sites.
-* `--pos` FILE: input file with site coordinates
+* `--pos` FILE: input file with site coordinates.
 * `--max_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. If set to 0 (zero) will perform all comparisons. [100]
 * `--call_geno`: call genotypes before running analyses.
-* `--N_thresh DOUBLE`: minimum threshold to consider site; missing data if otherwise (assumes -call_geno) 
-* `--call_thresh DOUBLE`: minimum threshold to call genotype; left as is if otherwise (assumes -call_geno)
+* `--N_thresh DOUBLE`: minimum threshold to consider site; missing data if otherwise (assumes -call_geno).
+* `--call_thresh DOUBLE`: minimum threshold to call genotype; left as is if otherwise (assumes -call_geno).
+* `--rnd_sample DOUBLE`: proportion of comparisons to randomly sample. [1]
+* `--seed INT`: random number generator seed for random sampling (--rnd_sample).
 * `--out FILE`: output file name. [stdout]
 * `--n_threads INT`: number of threads to use. [1]
 * `--version`: prints program version and exits.

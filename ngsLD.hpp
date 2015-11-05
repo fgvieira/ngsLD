@@ -19,6 +19,8 @@ typedef struct {
   bool call_geno;
   double N_thresh;
   double call_thresh;
+  double rnd_sample;
+  uint64_t seed;
   char *out;
   FILE *out_fh;
   uint n_threads;
@@ -38,12 +40,13 @@ typedef struct {
 typedef struct {
   params *pars;
   uint64_t site;
+  gsl_rng* rnd_gen;
 } pth_struct;
 
 // parse_args.cpp
 void init_pars(params* );
 void parse_cmd_args(params*, int, char**);
-
+void init_output(params* );
 
 void calc_pair_LD (void*);
 double pearson_r (double*, double*, uint64_t);
