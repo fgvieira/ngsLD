@@ -45,7 +45,7 @@ int main (int argc, char** argv) {
   // Get file total size
   struct stat st;
   if(stat(pars->in_geno, &st) != 0)
-    error(__FUNCTION__, "cannot check file size!");
+    error(__FUNCTION__, "cannot check GENO file size!");
 
   if(strcmp(strrchr(pars->in_geno, '.'), ".gz") == 0){
     if(pars->verbose >= 1)
@@ -72,7 +72,7 @@ int main (int argc, char** argv) {
     pars->out_fh = fopen(pars->out, "w");
   if(pars->out_fh == NULL)
     error(__FUNCTION__, "cannot open output file!");
-  //fprintf(pars->out_fh, "#chr\tsite1\tchr\tsite2\tdist\tr^2_ExpG\tD\tD'\tr^2\n");
+  //fprintf(pars->out_fh, "#site1\tsite2\tdist\tr^2_ExpG\tD\tD'\tr^2\n");
 
 
 
@@ -91,9 +91,16 @@ int main (int argc, char** argv) {
     pars->pos_dist = read_pos(pars->pos, pars->n_sites);
   else
     pars->pos_dist = init_ptr(pars->n_sites+1, INFINITY);
+
   // Read labels
   if(read_file(pars->pos, &pars->labels) != pars->n_sites)
     error(__FUNCTION__, "number of labels does not match number of sites!");
+  // Fix labels...
+  char* ptr;
+  for(uint64_t s = 1; s <= pars->n_sites; s++){
+    ptr = strchr(pars->labels[s-1], '\t');
+    *ptr = ':';
+  }
 
   // Data pre-processing...
   for(uint64_t i = 0; i < pars->n_ind; i++)
@@ -202,12 +209,13 @@ void calc_pair_LD (void *pth){
     if(p->pars->max_dist > 0 && dist >= p->pars->max_dist*1000)
       break;
 
+    // Calculate LD using bcftools algorithm
     bcf_pair_LD(LD_GL, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->n_ind);
 
     /*
-    if( LD_GL[0] < 0.1 ){
-      fprintf(p->pars->out_fh, "%s\t%s\t%lu\n", p->pars->labels[s1-1], p->pars->labels[s2-1], dist);
-      break;
+    if( isnan(LD_GL[1]) && isnan(LD_GL[2]) ){
+      //fprintf(p->pars->out_fh, "%s\t%s\t%.0f\n", p->pars->labels[s1-1], p->pars->labels[s2-1], dist);
+      continue;
     }
     */
 
