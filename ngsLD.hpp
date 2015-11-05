@@ -25,11 +25,10 @@ typedef struct {
   bool version;
   uint verbose;
 
-  double ***in_geno_lkl;  // n_ind * n_sites+1 * N_GENO
+  double ***geno_lkl;     // n_ind * n_sites+1 * N_GENO
   char **labels;          // n_sites+1
   double *pos_dist;       // n_sites+1
 
-  double** geno_lkl;      // n_sites+1 * (n_ind * N_GENO)
   double** expected_geno; // n_ind * n_sites+1
 
   threadpool_t *thread_pool;
@@ -48,6 +47,6 @@ void parse_cmd_args(params*, int, char**);
 
 void calc_pair_LD (void*);
 double pearson_r (double*, double*, uint64_t);
-void bcf_pair_LD (double*, double*, double*, uint64_t);
-int pair_freq_iter(int, double*, double*, double*);
-double est_freq(int, const double*);
+void bcf_pair_LD (double*, double**, double**, uint64_t);
+int pair_freq_iter(int, double**, double**, double*);
+double est_freq(int, double**);

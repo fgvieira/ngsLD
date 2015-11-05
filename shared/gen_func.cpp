@@ -60,11 +60,11 @@ double check_interv(double value, bool verbose) {
   } else if(value < errTol) {
     value = 0;
     if(verbose && value < 0)
-      printf("\nWARN: value %f < 0!\n", value);
+      fprintf(stderr, "\nWARN: value %f < 0!\n", value);
   } else if(value > 1 - errTol) {
     value = 1;
     if(verbose && value > 1)
-      printf("\nWARN: value %f > 1!\n", value);
+      fprintf(stderr, "\nWARN: value %f > 1!\n", value);
   }
 
   return value;
@@ -281,6 +281,7 @@ uint64_t read_file(const char *in_file, char ***ptr, uint64_t buff_size){
   uint64_t cnt = 0;
   char buf[buff_size];
   char **tmp = NULL;
+  uint64_t max_len = 0;
 
   // Open file
   gzFile in_file_fh = gzopen(in_file, "r");
@@ -298,19 +299,21 @@ uint64_t read_file(const char *in_file, char ***ptr, uint64_t buff_size){
       continue;
     // Alloc memory
     tmp = (char**) realloc(tmp, (cnt+1)*sizeof(char*));
-    tmp[cnt] = (char*) calloc(buff_size, sizeof(char));
+    tmp[cnt] = (char*) calloc(strlen(buf)+1, sizeof(char));
     strcpy(tmp[cnt], buf);
     cnt++;
+    if(strlen(buf) > max_len)
+      max_len = strlen(buf);
   }
 
   // Copy to final array
-  *ptr = init_ptr(cnt, buff_size, (const char*) '\0');
+  *ptr = init_ptr(cnt, max_len+1, (const char*) '\0');
   for(uint64_t i = 0; i < cnt; i++){
     strcpy(ptr[0][i], tmp[i]);
     free(tmp[i]);
   }
   free(tmp);
-
+  
   gzclose(in_file_fh);
   return cnt;
 }

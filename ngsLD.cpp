@@ -65,7 +65,6 @@ int main (int argc, char** argv) {
   // Declare and initialize output variables //
   /////////////////////////////////////////////
   pars->expected_geno = init_ptr(pars->n_sites+1, pars->n_ind, (double) -1);
-  pars->geno_lkl = init_ptr(pars->n_sites+1, pars->n_ind * N_GENO, (double) -1);
   pth_struct **pth = new pth_struct*[pars->n_sites+1];
   // Open filehandle
   if(pars->out != NULL)
@@ -82,17 +81,35 @@ int main (int argc, char** argv) {
   // Read data from GENO file
   if(pars->verbose >= 1)
     fprintf(stderr, "> Reading data from file...\n");
-  pars->in_geno_lkl = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, pars->in_logscale, pars->n_ind, pars->n_sites);
+  pars->geno_lkl = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, pars->in_logscale, pars->n_ind, pars->n_sites, true);
+
+  // Data pre-processing...
+  if(pars->verbose >= 1)
+    fprintf(stderr, "> Checking data...\n");
+  for(uint64_t i = 0; i < pars->n_ind; i++)
+    for(uint64_t s = 1; s <= pars->n_sites; s++){
+      // Call genotypes
+      if(pars->call_geno)
+	call_geno(pars->geno_lkl[s][i], N_GENO);
+
+      // Convert to normal space (since are in log from read_geno)
+      conv_space(pars->geno_lkl[s][i], N_GENO, exp);
+
+      // Calculate expected genotypes
+      pars->expected_geno[s][i] = pars->geno_lkl[s][i][1] + 2*pars->geno_lkl[s][i][2];
+    }
 
   // Read positions from file
   if(pars->verbose >= 1)
-    fprintf(stderr, "==> Getting sites coordinates\n");
+    fprintf(stderr, "==> Getting sites' coordinates\n");
   if(pars->pos)
     pars->pos_dist = read_pos(pars->pos, pars->n_sites);
   else
     pars->pos_dist = init_ptr(pars->n_sites+1, INFINITY);
 
   // Read labels
+  if(pars->verbose >= 1)
+    fprintf(stderr, "==> Getting sites' labels\n");
   if(read_file(pars->pos, &pars->labels) != pars->n_sites)
     error(__FUNCTION__, "number of labels does not match number of sites!");
   // Fix labels...
@@ -102,23 +119,6 @@ int main (int argc, char** argv) {
     *ptr = ':';
   }
 
-  // Data pre-processing...
-  for(uint64_t i = 0; i < pars->n_ind; i++)
-    for(uint64_t s = 1; s <= pars->n_sites; s++){
-      // Call genotypes
-      if(pars->call_geno)
-	call_geno(pars->in_geno_lkl[i][s], N_GENO);
-
-      // Convert to normal space
-      conv_space(pars->in_geno_lkl[i][s], N_GENO, exp);
-
-      // Caclulate expected genotypes
-      pars->expected_geno[s][i] = pars->in_geno_lkl[i][s][1] + 2*pars->in_geno_lkl[i][s][2];
-
-      // Convert matrix format
-      memcpy(&pars->geno_lkl[s][i*N_GENO], pars->in_geno_lkl[i][s], N_GENO * sizeof(double));
-    }
-  
 
 
   //////////////////
@@ -173,7 +173,6 @@ int main (int argc, char** argv) {
 
   fclose(pars->out_fh);
   //free_ptr((void*) pars->in_geno);
-  free_ptr((void***) pars->in_geno_lkl, pars->n_ind, pars->n_sites+1);
   free_ptr((void**) pars->geno_lkl, pars->n_sites+1);
   free_ptr((void**) pars->expected_geno, pars->n_sites+1);
   free_ptr((void**) pars->labels, pars->n_sites);
@@ -249,7 +248,7 @@ double pearson_r (double *s1, double *s2, uint64_t n_ind){
 
 // Adapted from BCFTOOLS:
 // https://github.com/lh3/samtools/blob/6bbe1609e10f27796e5bf29ac3207bb2e35ceac8/bcftools/em.c#L266-L310
-void bcf_pair_LD (double LD[3], double *s1, double *s2, uint64_t n_ind)
+void bcf_pair_LD (double LD[3], double **s1, double **s2, uint64_t n_ind)
 {
   double f[4], flast[4], f0[2];
 
@@ -300,7 +299,7 @@ void bcf_pair_LD (double LD[3], double *s1, double *s2, uint64_t n_ind)
 #define _G2(h, k) ((h&1) + (k&1))
 
 // 0: the previous site; 1: the current site
-int pair_freq_iter(int n, double *s1, double *s2, double f[4])
+int pair_freq_iter(int n, double **s1, double **s2, double f[4])
 {
   double ff[4];
   int i, k, h;
@@ -308,8 +307,8 @@ int pair_freq_iter(int n, double *s1, double *s2, double f[4])
   memset(ff, 0, 4 * sizeof(double));
   for (i = 0; i < n; ++i) {
     double *p[2], sum, tmp;
-    p[0] = s1 + i * 3;
-    p[1] = s2 + i * 3;
+    p[0] = s1[i];
+    p[1] = s2[i];
     for (k = 0, sum = 0.; k < 4; ++k)
       for (h = 0; h < 4; ++h)
 	sum += f[k] * f[h] * p[0][_G1(k,h)] * p[1][_G2(k,h)];
@@ -328,13 +327,13 @@ int pair_freq_iter(int n, double *s1, double *s2, double f[4])
 
 
 // estimate site allele frequency in a very naive and inaccurate way
-double est_freq(int n, const double *pdg)
+double est_freq(int n, double **pdg)
 {
   int i, gcnt[3], tmp1;
   // get a rough estimate of the genotype frequency
   gcnt[0] = gcnt[1] = gcnt[2] = 0;
   for (i = 0; i < n; ++i) {
-    const double *p = pdg + i * 3;
+    const double *p = pdg[i];
     if (p[0] != 1. || p[1] != 1. || p[2] != 1.) {
       int which = p[0] > p[1]? 0 : 1;
       which = p[which] > p[2]? which : 2;
