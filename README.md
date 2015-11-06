@@ -60,6 +60,11 @@ As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 
 
 It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
+### Possible analyses
+LD prunning - For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts\prune_SNPs.pl` to prune datasets but it is expected to be quite slow for large datasets.
+
+LD decay - You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\XXX.R` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't really need all comparisons.
+
 ### Thread pool
 The thread pool	implementation was adapted from Mathias Brossard's and is freely available from:
 https://github.com/mbrossard/threadpool
