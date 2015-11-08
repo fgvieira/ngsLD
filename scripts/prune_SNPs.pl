@@ -10,15 +10,15 @@
 
 =head1 NAME
 
-    prune_SNPs.pl v1.0.2
+    prune_SNPs.pl v1.0.3
 
 =head1 SYNOPSIS
 
     perl prune_SNPs.pl -in_file /path/to/input/file -subset /path/to/subset/file [-min_LD 0.2] [-max_dist 100000]
 
-    --in_file       = File with input network
+    --in_file       = File with input network (default STDIN)
     --subset        = File with node IDs to include (one per line)
-    --max_dist      = Maximum distance between nodes (input file 3rd column) to assume they are connected
+    --max_dist      = Maximum distance between nodes (input file 3rd column) to assume they are connected (in Kb)
     --min_LD        = Minimum level of LD allowed (as in --field option)
     --field         = Which column from input file to use
 
@@ -52,7 +52,8 @@ use Math::BigInt;
 my ($in_file, $subset_file, $max_dist, $min_LD, $field, $debug);
 my ($cnt, $edge, $graph, $most_conected_node, $n_edges, $max_n_edges, %subset);
 
-$max_dist = 100000;
+$in_file = '-';
+$max_dist = 100;
 $min_LD = 0.2;
 $field = 4;
 $debug = 0;
@@ -92,7 +93,7 @@ while(<FILE>){
     $graph->add_node($interact[1]) if(!$subset_file || defined($subset{$interact[1]}));
 
     # Skip if SNP distance more than $max_dist, or LD less than $min_LD
-    next if($interact[2] >= $max_dist || $interact[$field-1] <= $min_LD);
+    next if($interact[2] >= $max_dist*1000 || $interact[$field-1] <= $min_LD);
     # Skip if NaN, +Inf, -Inf, ...
     my $x = Math::BigInt->new($interact[$field-1]);
     next if($x->is_nan() || $x->is_inf('+') || $x->is_inf('-'));
