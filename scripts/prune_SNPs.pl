@@ -49,6 +49,7 @@ use Getopt::Long;
 use List::Util qw/shuffle/;
 use Graph::Easy;
 use Math::BigInt;
+use IO::Zlib;
 
 my ($in_file, $subset_file, $max_dist, $min_LD, $field, $in_sorted, $debug);
 my ($cnt, $edge, $node, $graph, $most_conected_node, $n_edges, $max_n_edges, %subset);
@@ -91,8 +92,9 @@ $graph->timeout(60);
 
 # Read file and build network
 my $prev_id;
-open(FILE, $in_file) || die("ERROR: cannot open input file!");
-while(<FILE>){
+my $FILE = new IO::Zlib;
+$FILE->open($in_file, "r") || die("ERROR: cannot open input file!");
+while(<$FILE>){
     $cnt++;
     my @interact = split(m/\t/, $_);
     
@@ -121,7 +123,7 @@ while(<FILE>){
     $edge = $graph->add_edge_once($interact[0], $interact[1]);
     $edge->set_attribute('label', $interact[$field-1].' / '.$interact[2]) if($debug);
 }
-close(FILE);
+$FILE->close;
 
 
 if(!$in_sorted){

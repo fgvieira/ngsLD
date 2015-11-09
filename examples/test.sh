@@ -30,6 +30,10 @@ $ANGSD/angsd -glf $SIM_DATA/testA.glf.gz -fai $SIM_DATA/testAF.ANC.fai -nInd $N_
 ../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_8.geno.gz --probs --pos testLD.pos --max_dist 10 --call_geno                                  | sort -k 1,1V -k 2,2V > testLD_8-CG.ld
 ../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_8.geno.gz --probs --pos testLD.pos --max_dist 10 --call_geno --N_thresh 0.3 --call_thresh 0.9 | sort -k 1,1V -k 2,2V > testLD_8-CGf.ld
 
+# LD prunning
+../scripts/prune_SNPs.pl --i testLD_8.ld          --max_dist 5 --min_LD 0.95 --field 6 | sort -k 1,1V > testLD_prune.id
+../scripts/prune_SNPs.pl --i testLD_8.ld --sorted --max_dist 5 --min_LD 0.95 --field 6 | sort -k 1,1V > testLD_pruneSort.id
+cat testLD_8.ld | shuf | ../scripts/prune_SNPs.pl --max_dist 5 --min_LD 0.95 --field 6 | sort -k 1,1V > testLD_pruneShuf.id
 
 
 ##### Check MD5

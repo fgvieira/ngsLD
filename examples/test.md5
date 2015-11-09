@@ -6,5 +6,8 @@
 76d6b2dc22ba27e9628f51fcda152ce3  testLD_8-CG.ld
 e5338c9df6f1412dcbdc07fdbdc0ed0c  testLD_8.ld
 bfa9f99108cfb5cd7d7ff4dd2d0b3169  testLD.pos
+94751cc36e7e7aa33565b0c3b1255e7b  testLD_prune.id
+94751cc36e7e7aa33565b0c3b1255e7b  testLD_pruneShuf.id
+94751cc36e7e7aa33565b0c3b1255e7b  testLD_pruneSort.id
 91858293c6b73af25ece214bc5ab5c10  testLD_T.ld
 a7474121c14f6a8932accbb7417e73c3  testLD_Tr.ld
