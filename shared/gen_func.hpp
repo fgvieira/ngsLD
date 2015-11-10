@@ -61,8 +61,10 @@ char *join(char*, uint64_t, const char*);
 
 unsigned short int *init_ptr(uint64_t, unsigned short int);
 unsigned short int **init_ptr(uint64_t, uint64_t, unsigned short int);
+int *init_ptr(uint64_t, int);
 uint64_t *init_ptr(uint64_t, uint64_t);
 uint64_t **init_ptr(uint64_t, uint64_t, uint64_t);
+float *init_ptr(uint64_t, float);
 double *init_ptr(uint64_t, double);
 double **init_ptr(uint64_t, uint64_t, double);
 double ***init_ptr(uint64_t, uint64_t, uint64_t, double);

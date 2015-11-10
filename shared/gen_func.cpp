@@ -348,7 +348,7 @@ split()
 ***************************/
 uint64_t split(char *str, const char *sep, int **out){
   uint64_t i = strlen(str);
-  int *buf = new int[i];
+  int *buf = init_ptr(i, 0);
 
   i = 0;
   char *pch;
@@ -368,7 +368,7 @@ uint64_t split(char *str, const char *sep, int **out){
     delete [] pch;
   }
 
-  *out = new int[i]; // FGV: why the need for *out?!?!!?
+  *out = init_ptr(i, 0); // FGV: why the need for *out?!?!!?
   memcpy(*out, buf, i*sizeof(int));
 
   delete [] buf;
@@ -378,7 +378,7 @@ uint64_t split(char *str, const char *sep, int **out){
 
 uint64_t split(char *str, const char *sep, float **out){
   uint64_t i = strlen(str);
-  float *buf = new float[i];
+  float *buf = init_ptr(i, (float) 0);
 
   i = 0;
   char *pch;
@@ -398,7 +398,7 @@ uint64_t split(char *str, const char *sep, float **out){
     delete [] pch;
   }
 
-  *out = new float[i];
+  *out = init_ptr(i, (float) 0);
   memcpy(*out, buf, i*sizeof(float));
 
   delete [] buf;
@@ -408,7 +408,7 @@ uint64_t split(char *str, const char *sep, float **out){
 
 uint64_t split(char *str, const char *sep, double **out){
   uint64_t i = strlen(str);
-  double *buf = new double[i];
+  double *buf = init_ptr(i, (double) 0);
 
   i = 0;
   char *pch;
@@ -428,7 +428,7 @@ uint64_t split(char *str, const char *sep, double **out){
     delete [] pch;
   }
 
-  *out = new double[i];
+  *out = init_ptr(i, (double) 0);
   memcpy(*out, buf, i*sizeof(double));
 
   delete [] buf;
@@ -438,13 +438,13 @@ uint64_t split(char *str, const char *sep, double **out){
 
 uint64_t split(char *str, const char *sep, char ***out){
   uint64_t i = strlen(str);
-  char **buf = new char*[i];
+  char **buf = init_ptr(i, 0, (char*) NULL);
 
   i = 0;
   while(str != NULL)
     buf[i++] = _strtok(&str, sep);
 
-  *out = new char*[i];
+  *out = init_ptr(i, 0, (char*) NULL);
   memcpy(*out, buf, i*sizeof(char*));
 
   delete [] buf;
@@ -454,7 +454,7 @@ uint64_t split(char *str, const char *sep, char ***out){
 
 
 char *join(unsigned short int *array, uint64_t size, const char *sep){
-  char *buf = new char[size*10];
+  char *buf = init_ptr(size*10, (char*) NULL);
   uint64_t len = 0;
 
   sprintf(buf, "%u", array[0]);
@@ -465,7 +465,7 @@ char *join(unsigned short int *array, uint64_t size, const char *sep){
     len = strlen(buf);
   }
   
-  char *str = new char[len+1];
+  char *str = init_ptr(len+1, (char*) NULL);
   strcpy(str, buf);
   delete [] buf;
 
@@ -475,7 +475,7 @@ char *join(unsigned short int *array, uint64_t size, const char *sep){
 
 
 char *join(uint64_t *array, uint64_t size, const char *sep){
-  char *buf = new char[size*25];
+  char *buf = init_ptr(size*25, (char*) NULL);
   uint64_t len = 0;
 
   sprintf(buf, "%lu", array[0]);
@@ -486,7 +486,7 @@ char *join(uint64_t *array, uint64_t size, const char *sep){
     len = strlen(buf);
   }
   
-  char *str = new char[len+1];
+  char *str = init_ptr(len+1, (char*) NULL);
   strcpy(str, buf);
   delete [] buf;
 
@@ -496,7 +496,7 @@ char *join(uint64_t *array, uint64_t size, const char *sep){
 
 
 char *join(double *array, uint64_t size, const char *sep){
-  char *buf = new char[size*25];
+  char *buf = init_ptr(size*25, (char*) NULL);
   uint64_t len = 0;
 
   sprintf(buf, "%.10f", array[0]);
@@ -507,7 +507,7 @@ char *join(double *array, uint64_t size, const char *sep){
     len = strlen(buf);
   }
 
-  char *str = new char[len+1];
+  char *str = init_ptr(len+1, (char*) NULL);
   strcpy(str, buf);
   delete [] buf;
 
@@ -516,7 +516,7 @@ char *join(double *array, uint64_t size, const char *sep){
 
 
 char *join(char *array, uint64_t size, const char *sep){
-  char *buf = new char[size*5];
+  char *buf = init_ptr(size*5, (char*) NULL);
   uint64_t len = 0;
 
   sprintf(buf, "%d", array[0]);
@@ -527,7 +527,7 @@ char *join(char *array, uint64_t size, const char *sep){
     len = strlen(buf);
   }
 
-  char *str = new char[len+1];
+  char *str = init_ptr(len+1, (char*) NULL);
   strcpy(str, buf);
   delete [] buf;
 
@@ -540,7 +540,12 @@ unsigned short int *init_ptr(uint64_t A, unsigned short int init){
   if(A < 1)
     return NULL;
 
-  unsigned short int *ptr = new unsigned short int[A];
+  unsigned short int *ptr;
+  try{
+    ptr = new unsigned short int[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init;
 
@@ -553,7 +558,12 @@ unsigned short int **init_ptr(uint64_t A, uint64_t B, unsigned short int init){
   if(A < 1)
     error(__FUNCTION__, "invalid size of array!");
 
-  unsigned short int **ptr = new unsigned short int*[A];
+  unsigned short int **ptr;
+  try{
+    ptr = new unsigned short int*[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init_ptr(B, init);
 
@@ -561,11 +571,34 @@ unsigned short int **init_ptr(uint64_t A, uint64_t B, unsigned short int init){
 }
 
 
+int *init_ptr(uint64_t A, int init){
+  if(A < 1)
+    return NULL;
+
+  int *ptr;
+  try{
+    ptr = new int[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
+  for(uint64_t a = 0; a < A; a++)
+    ptr[a] = init;
+
+  return ptr;
+}
+
+
+
 uint64_t *init_ptr(uint64_t A, uint64_t init){
   if(A < 1)
     return NULL;
 
-  uint64_t *ptr = new uint64_t[A];
+  uint64_t *ptr;
+  try{
+    ptr = new uint64_t[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init;
 
@@ -578,9 +611,32 @@ uint64_t **init_ptr(uint64_t A, uint64_t B, uint64_t init){
   if(A < 1)
     error(__FUNCTION__, "invalid size of array!");
 
-  uint64_t **ptr = new uint64_t*[A];
+  uint64_t **ptr;
+  try{
+    ptr = new uint64_t*[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init_ptr(B, init);
+
+  return ptr;
+}
+
+
+
+float *init_ptr(uint64_t A, float init){
+  if(A < 1)
+    return NULL;
+
+  float *ptr;
+  try{
+    ptr = new float[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
+  for(uint64_t a = 0; a < A; a++)
+    ptr[a] = init;
 
   return ptr;
 }
@@ -591,7 +647,12 @@ double *init_ptr(uint64_t A, double init){
   if(A < 1)
     return NULL;
 
-  double *ptr = new double[A];
+  double *ptr;
+  try{
+    ptr = new double[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init;
 
@@ -604,7 +665,12 @@ double **init_ptr(uint64_t A, uint64_t B, double init){
   if(A < 1)
     error(__FUNCTION__, "invalid size of array!");
 
-  double **ptr = new double*[A];
+  double **ptr;
+  try{
+    ptr = new double*[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init_ptr(B, init);
 
@@ -617,7 +683,12 @@ double ***init_ptr(uint64_t A, uint64_t B, uint64_t C, double init){
   if(A < 1)
     error(__FUNCTION__, "invalid size of array!");
 
-  double ***ptr = new double**[A];
+  double ***ptr;
+  try{
+    ptr = new double**[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init_ptr(B, C, init);
 
@@ -630,7 +701,12 @@ double ****init_ptr(uint64_t A, uint64_t B, uint64_t C, uint64_t D, double init)
   if(A < 1)
     error(__FUNCTION__, "invalid size of array!");
 
-  double ****ptr = new double***[A];
+  double ****ptr;
+  try{
+    ptr = new double***[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init_ptr(B, C, D, init);
 
@@ -655,7 +731,12 @@ char *init_ptr(uint64_t A, const char *init){
   if(A < 1)
     return NULL;
 
-  char *ptr = new char[A];
+  char *ptr;
+  try{
+    ptr = new char[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   memset(ptr, '\0', A*sizeof(char));
 
   if(init != NULL && strlen(init) > 0)
@@ -670,7 +751,12 @@ char **init_ptr(uint64_t A, uint64_t B, const char *init){
   if(A < 1)
     error(__FUNCTION__, "invalid size of array!");
 
-  char **ptr = new char*[A];
+  char **ptr;
+  try{
+    ptr = new char*[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init_ptr(B, init);
 

@@ -119,7 +119,7 @@ double* read_pos(char *in_pos, uint64_t n_sites){
   uint64_t prev_pos = 0;
 
   // Allocate memory
-  double *pos_dist = init_ptr(n_sites+1, INFINITY);
+  double *pos_dist = init_ptr(n_sites+1, (double) INFINITY);
 
   // Open file
   gzFile in_pos_fh = open_gzfile(in_pos, "r");
