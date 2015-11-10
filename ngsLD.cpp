@@ -105,15 +105,15 @@ int main (int argc, char** argv) {
 
   // Read positions from file
   if(pars->verbose >= 1)
-    fprintf(stderr, "==> Getting sites' coordinates\n");
+    fprintf(stderr, "==> Getting sites coordinates\n");
   if(pars->pos)
     pars->pos_dist = read_pos(pars->pos, pars->n_sites);
   else
-    pars->pos_dist = init_ptr(pars->n_sites+1, INFINITY);
+    pars->pos_dist = init_ptr(pars->n_sites+1, (double) INFINITY);
 
   // Read labels
   if(pars->verbose >= 1)
-    fprintf(stderr, "==> Getting sites' labels\n");
+    fprintf(stderr, "==> Getting sites labels\n");
   if(read_file(pars->pos, &pars->labels) != pars->n_sites)
     error(__FUNCTION__, "number of labels does not match number of sites!");
   // Fix labels...
