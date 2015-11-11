@@ -17,6 +17,7 @@ typedef struct {
   uint64_t n_sites;
   char *pos;
   uint64_t max_dist;
+  double min_maf;
   bool call_geno;
   double N_thresh;
   double call_thresh;
@@ -29,6 +30,7 @@ typedef struct {
   uint verbose;
 
   double ***geno_lkl;     // n_ind * n_sites+1 * N_GENO
+  double *maf;            // n_sites+1
   char **labels;          // n_sites+1
   double *pos_dist;       // n_sites+1
 
@@ -51,6 +53,6 @@ void init_output(params* );
 
 void calc_pair_LD (void*);
 double pearson_r (double*, double*, uint64_t);
-void bcf_pair_LD (double*, double**, double**, uint64_t);
+void bcf_pair_LD (double*, double**, double**, double, double, uint64_t);
 int pair_freq_iter(int, double**, double**, double*);
 double est_freq(int, double**);
