@@ -87,7 +87,9 @@ int main (int argc, char** argv) {
   // Read data from GENO file
   if(pars->verbose >= 1)
     fprintf(stderr, "> Reading data from file...\n");
-  pars->geno_lkl = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, pars->in_logscale, pars->n_ind, pars->n_sites, true);
+  double ***tmp = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, pars->in_logscale, pars->n_ind, pars->n_sites);
+  pars->geno_lkl = transp_matrix(tmp, pars->n_ind, pars->n_sites+1);
+  free_ptr((void**) tmp, pars->n_ind);
 
   // Data pre-processing...
   if(pars->verbose >= 1)
@@ -129,8 +131,7 @@ int main (int argc, char** argv) {
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Calculating MAF for all sites...\n");
   for(uint64_t s = 1; s <= pars->n_sites; s++)
-    pars->maf[s] = est_freq(pars->n_ind, pars->geno_lkl[s]);
-
+    pars->maf[s] = est_maf(pars->n_ind, pars->geno_lkl[s]);
 
 
 
@@ -195,6 +196,7 @@ int main (int argc, char** argv) {
   free_ptr((void**) pars->expected_geno, pars->n_sites+1);
   free_ptr((void**) pars->labels, pars->n_sites);
   free_ptr((void*) pars->pos_dist);
+  free_ptr((void*) pars->maf);
   free_ptr((void**) pth);
   gsl_rng_free(rnd_gen);
 
@@ -287,9 +289,9 @@ void bcf_pair_LD (double LD[3], double **s1, double **s2, double freq_s1, double
 
   // Initial allele frequencies
   if(freq_s1 == -1)
-    freq_s1 = est_freq(n_ind, s1);
+    freq_s1 = est_maf(n_ind, s1);
   if(freq_s2 == -1)
-    freq_s2 = est_freq(n_ind, s2);
+    freq_s2 = est_maf(n_ind, s2);
   //fprintf(stderr, "\tMAF: %f\t%f\n", freq_s1, freq_s2);
   // Initialize haplotype frequencies
   f[0] = (1 - freq_s1) * (1 - freq_s2); f[3] = freq_s1 * freq_s2;
@@ -358,24 +360,4 @@ int pair_freq_iter(int n, double **s1, double **s2, double f[4])
   }
   for (k = 0; k < 4; ++k) f[k] = ff[k] / (2 * n);
   return 0;
-}
-
-
-
-// estimate site allele frequency in a very naive and inaccurate way
-double est_freq(int n, double **pdg)
-{
-  int i, gcnt[3], tmp1;
-  // get a rough estimate of the genotype frequency
-  gcnt[0] = gcnt[1] = gcnt[2] = 0;
-  for (i = 0; i < n; ++i) {
-    const double *p = pdg[i];
-    if (p[0] != 1. || p[1] != 1. || p[2] != 1.) {
-      int which = p[0] > p[1]? 0 : 1;
-      which = p[which] > p[2]? which : 2;
-      ++gcnt[which];
-    }
-  }
-  tmp1 = gcnt[0] + gcnt[1] + gcnt[2];
-  return (tmp1 == 0)? -1.0 : (.5 * gcnt[1] + gcnt[2]) / tmp1;
 }

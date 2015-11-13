@@ -12,7 +12,7 @@ void init_pars(params *pars) {
   pars->n_sites = 0;
   pars->pos = NULL;
   pars->max_dist = 100;
-  pars->min_maf = 1e-6;
+  pars->min_maf = 1e-3;
   pars->call_geno = false;
   pars->N_thresh = 0;
   pars->call_thresh = 0;

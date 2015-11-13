@@ -55,4 +55,3 @@ void calc_pair_LD (void*);
 double pearson_r (double*, double*, uint64_t);
 void bcf_pair_LD (double*, double**, double**, double, double, uint64_t);
 int pair_freq_iter(int, double**, double**, double*);
-double est_freq(int, double**);
