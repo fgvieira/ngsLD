@@ -132,7 +132,7 @@ int main (int argc, char** argv) {
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Calculating MAF for all sites...\n");
   for(uint64_t s = 1; s <= pars->n_sites; s++)
-    pars->maf[s] = est_maf(pars->n_ind, pars->geno_lkl[s]);
+    pars->maf[s] = est_maf(pars->n_ind, pars->geno_lkl[s], (double*) NULL, false);
 
 
 
@@ -250,7 +250,7 @@ void calc_pair_LD (void *pth){
       LD_GL[0] = pearson_r(p->pars->expected_geno[s1], p->pars->expected_geno[s2], p->pars->n_ind);
 
       // Calculate LD using bcftools algorithm
-      bcf_pair_LD(LD_GL+1, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->maf[s1], p->pars->maf[s2], p->pars->n_ind);
+      bcf_pair_LD(LD_GL+1, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->maf[s1], p->pars->maf[s2], p->pars->n_ind, false);
     }
 
     // If sampling, also skip nan
@@ -289,16 +289,16 @@ double pearson_r (double *s1, double *s2, uint64_t n_ind){
 
 // Adapted from BCFTOOLS:
 // https://github.com/lh3/samtools/blob/6bbe1609e10f27796e5bf29ac3207bb2e35ceac8/bcftools/em.c#L266-L310
-void bcf_pair_LD (double LD[3], double **s1, double **s2, double freq_s1, double freq_s2, uint64_t n_ind)
+void bcf_pair_LD (double LD[3], double **s1, double **s2, double freq_s1, double freq_s2, uint64_t n_ind, bool loglkl)
 {
   // Haplotype frequencies
   double f[4], flast[4];
 
   // Initial allele frequencies
   if(freq_s1 == -1)
-    freq_s1 = est_maf(n_ind, s1);
+    freq_s1 = est_maf(n_ind, s1, (double*) NULL, loglkl);
   if(freq_s2 == -1)
-    freq_s2 = est_maf(n_ind, s2);
+    freq_s2 = est_maf(n_ind, s2, (double*) NULL, loglkl);
   //fprintf(stderr, "\tMAF: %f\t%f\n", freq_s1, freq_s2);
   // Initialize haplotype frequencies
   f[0] = (1 - freq_s1) * (1 - freq_s2); f[3] = freq_s1 * freq_s2;

@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include <gsl/gsl_rng.h>
 
-
+const uint64_t N_GENO = 3;
 const double INF = 1e15;
 const double EPSILON = 1e-5;
 const uint64_t BUFF_LEN = 100000;
@@ -37,12 +37,9 @@ void catch_SIG();
 double check_interv(double, bool);
 int array_max_pos(double*, int);
 int array_min_pos(double*, int);
-void transp_matrix(void*, void*, uint64_t, uint64_t);
+double*** transp_matrix(double***, uint64_t, uint64_t);
 double draw_rnd(gsl_rng*, uint64_t, uint64_t);
-bool miss_data(double*);
-void call_geno(double*, int, bool = true, double = 0, double = 0, int = 0);
 void conv_space(double*, int, double (*func)(double));
-void post_prob(double*, double*, double*, uint64_t);
 double logsum(double*, uint64_t);
 double logsum2(double, double);
 double logsum3(double, double, double);
@@ -82,3 +79,10 @@ void cpy(void*, void*, uint64_t, uint64_t);
 void cpy(void*, void*, uint64_t, uint64_t, uint64_t);
 void cpy(void*, void*, uint64_t, uint64_t, uint64_t, uint64_t);
 void cpy(void*, void*, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
+
+bool miss_data(double*);
+void call_geno(double*, int, bool = true, double = 0, double = 0, int = 0);
+void post_prob(double*, double*, double*, uint64_t, bool = true);
+void calc_prior(double*, double, double);
+double est_maf(uint64_t, double**, double, bool);
+double est_maf(uint64_t, double**, double*, bool);

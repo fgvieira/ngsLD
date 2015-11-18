@@ -100,80 +100,23 @@ int array_min_pos(double *array, int size) {
 
 
 // Transpose matrix
-void transp_matrix(void *src, void *dest, uint64_t A, uint64_t B){
+double*** transp_matrix(double ***src, uint64_t A, uint64_t B){
   if(A < 1 || B < 1)
     error(__FUNCTION__, "invalid size of array!");
 
-  double** s = (double**) src;
-  double** d = (double**) dest;
+  double*** dest = init_ptr(B, A, 0, (double)0);
   
   for(uint64_t a = 0; a < A; a++)
     for(uint64_t b = 0; b < B; b++)
-      d[b][a] = s[a][b];
+      dest[b][a] = src[a][b];
+
+  return dest;
 }
 
 
 
 double draw_rnd(gsl_rng *r, uint64_t min, uint64_t max) {
   return( min + gsl_rng_uniform(r) * (max - min) );
-}
-
-
-
-// Test for missing data in genotype
-// => all genos are equal
-bool miss_data(double *geno){
-  if(abs(geno[0] - geno[1]) < EPSILON && 
-     abs(geno[1] - geno[2]) < EPSILON)
-    return true;
-  else
-    return false;
-}
-
-
-
-/* Function to call genotypes from post probs
-   NOTE: probs must be normalized, that is, sum (or logsum) to 1!
-      geno              : array with probs
-      n_geno            : number of genotypes in array
-      log_scale         : are the probs in log scale?
-      N_prob_thresh     : minimum prob to use data.
-                          If max prob is lower, data set as missing
-      call_prob_thresh  : minimum prob to call a genotype. 
-                          If max prob is lower, leave geno as probs
-      miss_data         : how the missing data is handled
-          0 = missing data (all genot with equal prob)
-	  1 = sample random genotype
-	  2 = call the highest prob geno (since missing data, probably major/major)
-*/
-void call_geno(double *geno, int n_geno, bool log_scale, double N_prob_thresh, double call_prob_thresh, int miss_data){
-  if(N_prob_thresh > call_prob_thresh)
-    error(__FUNCTION__, "missing data threshold must be smaller than calling genotype threshold!");
-
-  int max_pos = array_max_pos(geno, n_geno);
-  int min_pos = array_min_pos(geno, n_geno);
-  double max_pp = (log_scale ? exp(geno[max_pos]) : geno[max_pos]);
-
-  // If missing data
-  if(geno[min_pos] == geno[max_pos]){
-    if(miss_data == 0)
-      max_pp = -1;
-    else if(miss_data == 1)
-      max_pos = rand() % 3;
-  }
-
-
-  if(max_pp < N_prob_thresh)
-    for (int g = 0; g < n_geno; g++)
-      geno[g] = (log_scale ? log((double) 1/n_geno) : (double) 1/n_geno);
-
-
-  if(max_pp >= call_prob_thresh){
-    for (int g = 0; g < n_geno; g++)
-      geno[g] = (log_scale ? -INF : 0);
-
-    geno[max_pos] = (log_scale ? log(1) : 1);
-  }
 }
 
 
@@ -185,21 +128,6 @@ void conv_space(double *geno, int n_geno, double (*func)(double)) {
     if(geno[g] == -INFINITY)
       geno[g] = -INF;
   }
-}
-
-
-
-void post_prob(double *pp, double *lkl, double *prior, uint64_t n_geno){
-  for(uint64_t cnt = 0; cnt < n_geno; cnt++){
-    pp[cnt] = lkl[cnt];
-    if(prior != NULL)
-      pp[cnt] += prior[cnt];
-  }
-
-  double norm = logsum(pp, n_geno);
-
-  for(uint64_t cnt = 0; cnt < n_geno; cnt++)
-    pp[cnt] -= norm;
 }
 
 
@@ -821,4 +749,158 @@ void cpy(void *dest, void *orig, uint64_t A, uint64_t B, uint64_t C, uint64_t si
 void cpy(void *dest, void *orig, uint64_t A, uint64_t B, uint64_t C, uint64_t D, uint64_t size){
   for(uint64_t a = 0; a < A; a++)
     cpy( ((char***)dest)[a], ((char***)orig)[a], B, C, D, size);
+}
+
+
+
+
+///////////////////////////////////
+// Population Genetics Functions //
+///////////////////////////////////
+
+// Test for missing data in genotype
+// => all genos are equal
+bool miss_data(double *geno){
+  if(abs(geno[0] - geno[1]) < EPSILON && 
+     abs(geno[1] - geno[2]) < EPSILON)
+    return true;
+  else
+    return false;
+}
+
+
+
+/* Function to call genotypes from post probs
+   NOTE: probs must be normalized, that is, sum (or logsum) to 1!
+      geno              : array with probs
+      n_geno            : number of genotypes in array
+      log_scale         : are the probs in log scale?
+      N_prob_thresh     : minimum prob to use data.
+                          If max prob is lower, data set as missing
+      call_prob_thresh  : minimum prob to call a genotype. 
+                          If max prob is lower, leave geno as probs
+      miss_data         : how the missing data is handled
+          0 = missing data (all genot with equal prob)
+	  1 = sample random genotype
+	  2 = call the highest prob geno (since missing data, probably major/major)
+*/
+void call_geno(double *geno, int n_geno, bool log_scale, double N_prob_thresh, double call_prob_thresh, int miss_data){
+  if(N_prob_thresh > call_prob_thresh)
+    error(__FUNCTION__, "missing data threshold must be smaller than calling genotype threshold!");
+
+  int max_pos = array_max_pos(geno, n_geno);
+  int min_pos = array_min_pos(geno, n_geno);
+  double max_pp = (log_scale ? exp(geno[max_pos]) : geno[max_pos]);
+
+  // If missing data
+  if(geno[min_pos] == geno[max_pos]){
+    if(miss_data == 0)
+      max_pp = -1;
+    else if(miss_data == 1)
+      max_pos = rand() % 3;
+  }
+
+
+  if(max_pp < N_prob_thresh)
+    for (int g = 0; g < n_geno; g++)
+      geno[g] = (log_scale ? log((double) 1/n_geno) : (double) 1/n_geno);
+
+
+  if(max_pp >= call_prob_thresh){
+    for (int g = 0; g < n_geno; g++)
+      geno[g] = (log_scale ? -INF : 0);
+
+    geno[max_pos] = (log_scale ? log(1) : 1);
+  }
+}
+
+
+
+// Calculate posterio probabilities (PP) from GLs and prior
+// GL in log-space by default, but can be in normal-space if flag set
+// prior and PP always given log-space
+void post_prob(double *pp, double *lkl, double *prior, uint64_t n_geno, bool loglkl){
+  for(uint64_t cnt = 0; cnt < n_geno; cnt++){
+    if(loglkl)
+      pp[cnt] = lkl[cnt];
+    else
+      pp[cnt] = log(lkl[cnt]);
+
+    if(prior != NULL)
+      pp[cnt] += prior[cnt];
+  }
+
+  double norm = logsum(pp, n_geno);
+
+  for(uint64_t cnt = 0; cnt < n_geno; cnt++)
+    pp[cnt] -= norm;
+}
+
+
+
+// Calculate HWE priors
+// MAF and F in normal-space
+// Genotype frequencies in log-space
+void calc_prior(double *priors, double freq, double F){
+  priors[0] = log(pow(1-freq,2)   +   (1-freq)*freq*F);
+  priors[1] = log(2*(1-freq)*freq - 2*(1-freq)*freq*F);
+  priors[2] = log(pow(freq,2)     +   (1-freq)*freq*F);
+
+  /* Added to avoid impossible cases (like HET on an IBD position). This way, 
+     the prior for an HET is not 0 and these cases can still be calculated. 
+     We could set the PP to missing (e.g. 0.3,0.3,0.3) but the IBD status is being 
+     optimized so it is probably better to keep the information and give preference to the GL.
+  */
+  if(F == 1)
+    priors[1] = -INF;
+}
+
+
+
+// Estimate site MAF from (logscaled) GL through an EM
+// If indF == NULL, assumes uniform prior
+// Else (0 < indF < 1), assumes HWE with specified level of inbreeding
+double est_maf(uint64_t n_ind, double **pdg, double F, bool loglkl){
+  double maf;
+  double *indF = init_ptr(n_ind, F);
+
+  maf = est_maf(n_ind, pdg, indF, loglkl);
+
+  free_ptr((void*) indF);
+  return maf;
+}
+
+double est_maf(uint64_t n_ind, double **pdg, double *indF, bool loglkl){
+  int iters = 0;
+  double num = 0; // Expected number minor alleles
+  double den = 0; // Expected total number of alleles
+  double F, prev_freq, freq = 0.01;
+  double prior[N_GENO], pp[N_GENO];
+
+  do{
+    prev_freq = freq;
+
+    for(uint64_t i = 0; i < n_ind; i++){
+      if(indF == NULL){
+	F = 0;
+	post_prob(pp, pdg[i], NULL, N_GENO, loglkl);
+      }else{
+	F = indF[i];
+	if(F < -1)
+	  error(__FUNCTION__, "indF must be between 0 < F < 1!");
+	calc_prior(prior, freq, F);
+	post_prob(pp, pdg[i], prior, N_GENO, loglkl);
+      }
+      conv_space(pp, N_GENO, exp);
+
+      num += pp[1] + pp[2]*(2-F);
+      den += 2*pp[1] + (pp[0]+pp[2])*(2-F);
+
+      //printf("Ind: %lu; num: %f; den: %f; pp: %f %f %f; IBD: %f\n", i, num, den, pp[0], pp[1], pp[2], F);
+    }
+
+    freq = num/den;
+  }while( abs(prev_freq - freq) > EPSILON && iters++ < 100 );
+
+  return freq;
 }
