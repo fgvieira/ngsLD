@@ -16,7 +16,8 @@ typedef struct {
   uint64_t n_ind;
   uint64_t n_sites;
   char *pos;
-  uint64_t max_dist;
+  uint64_t max_kb_dist;
+  uint64_t max_snp_dist;
   double min_maf;
   bool call_geno;
   double N_thresh;

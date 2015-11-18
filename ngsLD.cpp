@@ -124,7 +124,8 @@ int main (int argc, char** argv) {
   char* ptr;
   for(uint64_t s = 1; s <= pars->n_sites; s++){
     ptr = strchr(pars->labels[s-1], '\t');
-    *ptr = ':';
+    if(ptr != NULL)
+      *ptr = ':';
   }
 
   // Calculate MAF
@@ -168,6 +169,9 @@ int main (int argc, char** argv) {
       error(__FUNCTION__, "thread pool is shutting down!");
     else if(ret == -5)
       error(__FUNCTION__, "thread failure!");
+
+    if(pars->verbose >= 3)
+      fprintf(stderr, "> Launched thread for site %lu\n", s1);
   }
 
 
@@ -219,7 +223,7 @@ void calc_pair_LD (void *pth){
   double LD_GL[4];
 
 
-  // Calc LD for pairs of SNPs < max_dist
+  // Calc LD for pairs of SNPs < max_kb_dist
   do{
     s2++;
     dist += p->pars->pos_dist[s2];
@@ -227,8 +231,11 @@ void calc_pair_LD (void *pth){
     if(p->pars->verbose > 8)
       fprintf(stderr, "%lu\t%s\t%lu\t%s\t%.0f\t%f\t%f\t%s\t%s\n", s1, p->pars->labels[s1-1], s2, p->pars->labels[s2-1], dist, p->pars->maf[s1], p->pars->maf[s2], join(p->pars->expected_geno[s1],p->pars->n_ind,","), join(p->pars->expected_geno[s2],p->pars->n_ind,","));
 
-    // Stop if current distance is greater than max_dist
-    if(p->pars->max_dist > 0 && dist >= p->pars->max_dist*1000)
+    // Stop if current distance is greater than max_kb_dist
+    if(p->pars->max_kb_dist > 0 && p->pars->max_kb_dist*1000 < dist)
+      break;
+    // Stop if current SNP is greater than max_snp_dist
+    if(p->pars->max_snp_dist > 0 && p->pars->max_snp_dist < s2 - s1)
       break;
 
     // Random sampling
