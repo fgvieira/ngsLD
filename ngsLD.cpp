@@ -201,7 +201,7 @@ int main (int argc, char** argv) {
   free_ptr((void**) pars->labels, pars->n_sites);
   free_ptr((void*) pars->pos_dist);
   free_ptr((void*) pars->maf);
-  free_ptr((void**) pth);
+  free_ptr((void**) pth); // Only the **pth is freed since the others are freed by each thread.
   gsl_rng_free(rnd_gen);
 
   if(pars->verbose >= 1)

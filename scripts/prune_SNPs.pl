@@ -14,20 +14,18 @@
 
 =head1 SYNOPSIS
 
-    perl prune_SNPs.pl --in_file /path/to/input/file [--subset /path/to/subset/file] [--max_dist 100] [--min_LD 0.2] [--field 4] [--sorted]
+    perl prune_SNPs.pl --in_file /path/to/input/file [--subset /path/to/subset/file] [--max_dist 100] [--min_LD 0.2] [--field 4] [--method 0]
 
     --in_file       = File with input network (default STDIN)
     --subset        = File with node IDs to include (one per line)
-    --max_dist      = Maximum distance between nodes (input file 3rd column) to assume they are connected (in Kb)
+    --max_kb_dist   = Maximum distance between nodes (input file 3rd column) to assume they are connected (in Kb)
     --min_LD        = Minimum level of LD allowed (as in --field option)
     --field         = Which column from input file to use
-    --sorted        = Assumes input first column is sorted by genomic coordinates (usually "sort -k 1,1V")
+    --method        = Prunning method to use
 
 =head1 DESCRIPTION
 
-    This script will prune a network according to LD and distance between nodes (or any other two arbitrary metrics), 
-    ending up in selecting one representative node for each connection cluster. Input file should be tab-sepparated 
-    into: node1, node2, dist, LD.
+    This script will prune SNPs to LD and distance between them, ending up in selecting only representative SNPs. Input file should be tab-sepparated into: node1, node2, dist, LD.
 
 =head1 AUTHOR
 
@@ -46,36 +44,35 @@
 
 use strict;
 use Getopt::Long;
-use List::Util qw/shuffle/;
-use Graph::Easy;
 use Math::BigInt;
 use IO::Zlib;
 
-my ($in_file, $subset_file, $max_dist, $min_LD, $field, $in_sorted, $debug);
-my ($cnt, $edge, $node, $graph, $most_conected_node, $n_edges, $max_n_edges, %subset);
+my ($in_file, $subset_file, $max_kb_dist, $min_LD, $field, $method, $debug);
+my ($cnt, %subset);
+my (@keep, @prunned); # Only used on first method
+my ($prev_id);        # Only used on second method
 
 $in_file = '-';
-$max_dist = 100;
+$max_kb_dist = 100;
 $min_LD = 0.2;
 $field = 4;
+$method = 0;
 $debug = 0;
-$cnt = 0;
 
 # Parse args
 GetOptions('h|help'             => sub { exec('perldoc',$0); exit; },
            'i|in_file=s'        => \$in_file,
 	   's|subset:s'         => \$subset_file,
-	   'd|max_dist:s'       => \$max_dist,
+	   'd|max_kb_dist:s'    => \$max_kb_dist,
            'r|min_LD:s'         => \$min_LD,
            'f|field:s'          => \$field,
-	   'sorted!'            => \$in_sorted,
+	   'method:i'           => \$method,
 	   'debug!'             => \$debug,
     );
 
 
-if($in_sorted){
-    print(STDERR "### Assuming input first column is sorted by genomic coordinates.\n");
-}
+print(STDERR "### Assuming input first two columns are sorted by genomic coordinates and that there was no random sampling!\n");
+
 
 # Parse subset file
 if($subset_file){
@@ -85,105 +82,61 @@ if($subset_file){
 }
 
 
-# Create graph
-$graph = Graph::Easy->new(undirected => 1);
-$graph->timeout(60);
-
-
-# Read file and build network
-my $prev_id;
+# Open file
 my $FILE = new IO::Zlib;
 $FILE->open($in_file, "r") || die("ERROR: cannot open input file!");
+
+my $search = 0;
 while(<$FILE>){
     $cnt++;
     my @interact = split(m/\t/, $_);
-    
-    # If input is sorted and a new node, 
-    if( $in_sorted && defined($prev_id) && $prev_id ne $interact[0] ){
-	$node = $graph->node($prev_id);
-	$n_edges = $node->edges();
-	if($n_edges == 0){
-	    print $node->label."\n";
-	    $graph->del_node($node);
-	}
-    }
-    $prev_id = $interact[0];
+    chomp();
 
-    $graph->add_node($interact[0]) if(!$subset_file || defined($subset{$interact[0]}));
-    $graph->add_node($interact[1]) if(!$subset_file || defined($subset{$interact[1]}));
-
-    # Skip if SNP distance more than $max_dist, or LD less than $min_LD
-    next if($interact[2] >= $max_dist*1000 || $interact[$field-1] <= $min_LD);
     # Skip if NaN, +Inf, -Inf, ...
     my $x = Math::BigInt->new($interact[$field-1]);
     next if($x->is_nan() || $x->is_inf('+') || $x->is_inf('-'));
-    # Skip if not on the subset file
-    next unless( !$subset_file || (defined($subset{$interact[0]}) &&  defined($subset{$interact[1]})) );
 
-    $edge = $graph->add_edge_once($interact[0], $interact[1]);
-    $edge->set_attribute('label', $interact[$field-1].' / '.$interact[2]) if($debug);
-}
-$FILE->close;
+    # Skip if SNP is not in the subset file
+    next if($subset_file && !defined($subset{$interact[0]}));
 
+    ## If first comparison, print first SNP and fill in $prev_id variable
+    if(!defined($prev_id)){
+	print($interact[0]."\n");
+	push(@keep, $interact[0]);
+	$prev_id = $interact[0];
+    }
 
-if(!$in_sorted){
-    # Print stats for read nodes and edges
-    print(STDERR "### Parsed ".$cnt." interactions between ".$graph->nodes()." nodes.\n");
-
-    # Print out (and delete) unconnected nodes
-    foreach $node ( $graph->nodes() ){
-	$n_edges = $node->edges();
-	if($n_edges == 0){
-	    print $node->label."\n";
-	    $graph->del_node($node);
+    if($method == 0){
+	# Algorithm that "marks" SNPs as linked and excludes them from future comparisons
+	if( !grep(/$interact[0]/, @keep) && !grep(/$interact[0]/, @prunned) ){
+	    push(@keep, $interact[0]);
+	    print($interact[0]."\n");
 	}
-    }
-}
 
-
-# Print stats for actually connected nodes and edges
-print(STDERR "### Kept ".$graph->edges()." interactions between ".$graph->nodes()." nodes.\n");
-
-
-# DEBUG
-if($debug){
-    print(STDERR "### Initial network\n");
-    print(STDERR $graph->as_ascii());
-}
-
-
-while(1){
-    # Find top-connected node
-    $max_n_edges = 0;
-    foreach $node ( $graph->nodes() ){
-	$n_edges = $node->edges();
-	if($n_edges > $max_n_edges){
-	    $most_conected_node = $node->name();
-	    $max_n_edges = $n_edges;
+	if( grep(/$interact[0]/, @keep) ){
+	    if($interact[2] <= $max_kb_dist*1000 && $interact[$field-1] > $min_LD){
+		push(@prunned, $interact[1]);
+	    }
 	}
+    }elsif($method == 1){
+	# Algorithm that "jumps" to next unlinked SNP
+	next if($search && $interact[0] ne $prev_id);
+	$search = 0;
+
+	if($interact[0] eq $prev_id){
+	    if($interact[2] >= $max_kb_dist*1000 || $interact[$field-1] < $min_LD){
+		print($interact[1]."\n");
+		$prev_id = $interact[1];
+		$search = 1;
+	    }
+	}else{
+	    print($interact[0]."\n");
+	    $prev_id = $interact[0];
+	}
+    }else{
+	die("ERROR: wrong method specified!");
     }
-
-    # If top node has no edge, break!
-    last if($max_n_edges < 1);
-
-    $graph->del_node($most_conected_node);
-
-    if($debug){
-	print(STDERR "### Pruned network after most connected node (".$most_conected_node.") removed!\n");
-	print(STDERR $graph->as_ascii());
-    }
 }
 
 
-# DEBUG
-if($debug){
-    print(STDERR "### Final network!\n");
-    print(STDERR $graph->as_ascii());
-}
-
-
-for $node ($graph->nodes()){
-    print $node->label."\n";
-}
-
-exit();
+exit(0);
