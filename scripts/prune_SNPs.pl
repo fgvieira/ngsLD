@@ -10,16 +10,16 @@
 
 =head1 NAME
 
-    prune_SNPs.pl v1.0.4
+    prune_SNPs.pl v1.0.5
 
 =head1 SYNOPSIS
 
-    perl prune_SNPs.pl --in_file /path/to/input/file [--subset /path/to/subset/file] [--max_dist 100] [--min_LD 0.2] [--field 4] [--method 0]
+    perl prune_SNPs.pl [--in_file /path/to/input/file] [--subset /path/to/subset/file] [--max_dist +Inf] [--min_LD 0.7] [--field 4] [--method 0]
 
     --in_file       = File with input network (default STDIN)
     --subset        = File with node IDs to include (one per line)
     --max_kb_dist   = Maximum distance between nodes (input file 3rd column) to assume they are connected (in Kb)
-    --min_LD        = Minimum level of LD allowed (as in --field option)
+    --min_LD        = Minimum level of LD to consider to SNPs as linked (as in --field option)
     --field         = Which column from input file to use
     --method        = Prunning method to use
 
@@ -49,15 +49,16 @@ use IO::Zlib;
 
 my ($in_file, $subset_file, $max_kb_dist, $min_LD, $field, $method, $debug);
 my ($cnt, %subset);
-my (@keep, @prunned); # Only used on first method
-my ($prev_id);        # Only used on second method
+my (%keep, %prunned);   # Only used on first method
+my ($prev_id, $search); # Only used on second method
 
 $in_file = '-';
-$max_kb_dist = 100;
-$min_LD = 0.2;
+$max_kb_dist = '+inf';
+$min_LD = 0.7;
 $field = 4;
 $method = 0;
 $debug = 0;
+$search = 0;
 
 # Parse args
 GetOptions('h|help'             => sub { exec('perldoc',$0); exit; },
@@ -73,6 +74,8 @@ GetOptions('h|help'             => sub { exec('perldoc',$0); exit; },
 
 print(STDERR "### Assuming input first two columns are sorted by genomic coordinates and that there was no random sampling!\n");
 
+print(STDERR "WARNING: \"--method 1\" is not guaranteed to work, e.g. if an unlinked site has no SNPs less than \"--max_kb_dist\" away the remaining comparisons are ignored.\n") if($method == 1);
+
 
 # Parse subset file
 if($subset_file){
@@ -86,7 +89,8 @@ if($subset_file){
 my $FILE = new IO::Zlib;
 $FILE->open($in_file, "r") || die("ERROR: cannot open input file!");
 
-my $search = 0;
+
+# Loop through all comparisons
 while(<$FILE>){
     $cnt++;
     my @interact = split(m/\t/, $_);
@@ -102,20 +106,20 @@ while(<$FILE>){
     ## If first comparison, print first SNP and fill in $prev_id variable
     if(!defined($prev_id)){
 	print($interact[0]."\n");
-	push(@keep, $interact[0]);
+	$keep{$interact[0]}++;
 	$prev_id = $interact[0];
     }
 
     if($method == 0){
 	# Algorithm that "marks" SNPs as linked and excludes them from future comparisons
-	if( !grep(/$interact[0]/, @keep) && !grep(/$interact[0]/, @prunned) ){
-	    push(@keep, $interact[0]);
+	if( !defined($keep{$interact[0]}) && !defined($prunned{$interact[0]}) ){
+	    $keep{$interact[0]}++;
 	    print($interact[0]."\n");
 	}
 
-	if( grep(/$interact[0]/, @keep) ){
+	if( defined($keep{$interact[0]}) ){
 	    if($interact[2] <= $max_kb_dist*1000 && $interact[$field-1] > $min_LD){
-		push(@prunned, $interact[1]);
+		$prunned{$interact[1]}++;
 	    }
 	}
     }elsif($method == 1){
@@ -139,4 +143,5 @@ while(<$FILE>){
 }
 
 
+$FILE->close;
 exit(0);
