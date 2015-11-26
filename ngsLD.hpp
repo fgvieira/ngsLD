@@ -54,5 +54,3 @@ void init_output(params* );
 
 void calc_pair_LD (void*);
 double pearson_r (double*, double*, uint64_t);
-void bcf_pair_LD (double*, double**, double**, double, double, uint64_t, bool);
-int pair_freq_iter(int, double**, double**, double*);
