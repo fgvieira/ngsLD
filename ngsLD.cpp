@@ -93,21 +93,31 @@ int main (int argc, char** argv) {
   pars->geno_lkl = transp_matrix(tmp, pars->n_ind, pars->n_sites+1);
   free_ptr((void**) tmp, pars->n_ind);
 
-  // Data pre-processing...
+  // Call genotypes
+  if(pars->call_geno){
+    if(pars->verbose >= 1)
+      fprintf(stderr, "> Calling genotypes...\n");
+    for(uint64_t i = 0; i < pars->n_ind; i++)
+      for(uint64_t s = 1; s <= pars->n_sites; s++)
+	call_geno(pars->geno_lkl[s][i], N_GENO);
+  }
+
+  // Calculate MAF
   if(pars->verbose >= 1)
-    fprintf(stderr, "> Checking data...\n");
+    fprintf(stderr, "==> Calculating MAF for all sites...\n");
+  for(uint64_t s = 1; s <= pars->n_sites; s++)
+    pars->maf[s] = est_maf(pars->n_ind, pars->geno_lkl[s], (double*) NULL);
+  
+  // Data pre-processing...
   for(uint64_t i = 0; i < pars->n_ind; i++)
     for(uint64_t s = 1; s <= pars->n_sites; s++){
-      // Call genotypes
-      if(pars->call_geno)
-	call_geno(pars->geno_lkl[s][i], N_GENO);
-
-      // Convert to normal space (since are in log from read_geno)
+      // Convert to normal space (since GENOs are in LOG from read_geno)
       conv_space(pars->geno_lkl[s][i], N_GENO, exp);
 
       // Calculate expected genotypes
       pars->expected_geno[s][i] = pars->geno_lkl[s][i][1] + 2*pars->geno_lkl[s][i][2];
     }
+
 
   // Read positions from file
   if(pars->verbose >= 1)
@@ -129,12 +139,6 @@ int main (int argc, char** argv) {
     if(ptr != NULL)
       *ptr = ':';
   }
-
-  // Calculate MAF
-  if(pars->verbose >= 1)
-    fprintf(stderr, "==> Calculating MAF for all sites...\n");
-  for(uint64_t s = 1; s <= pars->n_sites; s++)
-    pars->maf[s] = est_maf(pars->n_ind, pars->geno_lkl[s], (double*) NULL, false);
 
 
 

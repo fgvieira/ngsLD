@@ -13,7 +13,7 @@ void init_pars(params *pars) {
   pars->pos = NULL;
   pars->max_kb_dist = 100;
   pars->max_snp_dist = 0;
-  pars->min_maf = 1e-3;
+  pars->min_maf = 0.001;
   pars->call_geno = false;
   pars->N_thresh = 0;
   pars->call_thresh = 0;
