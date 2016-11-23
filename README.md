@@ -4,11 +4,7 @@
 
 ### Citation
 
-`ngsLD` was published in 2015 at [Biological Journal of the Linnean Society](http://onlinelibrary.wiley.com/doi/10.1111/bij.12511/abstract), so please cite it if you use it in your work:
-
-    Vieira FG, Lassalle F, Korneliussen TS, Fumagalli M
-    Improving the estimation of genetic distances from Next-Generation Sequencing data
-    Biological Journal of the Linnean Society (2015) doi: 10.1111/bij.12511
+`ngsLD` is still work under progress...
 
 ### Installation
 
@@ -43,7 +39,9 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--n_ind INT`: sample size (number of individuals).
 * `--n_sites INT`: total number of sites.
 * `--pos` FILE: input file with site coordinates.
-* `--max_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. If set to 0 (zero) will perform all comparisons. [100]
+* `--max_kb_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. If set to 0 (zero) will perform all comparisons. [100]
+* `--max_snp_dist INT`: maximum distance between SNPs (in number of SNPs) to calculate LD. If set to 0 (zero) will perform all comparisons. [0]
+* `--min_maf DOUBLE`: minimum SNP minor allele frequency. [0.001]
 * `--call_geno`: call genotypes before running analyses.
 * `--N_thresh DOUBLE`: minimum threshold to consider site; missing data if otherwise (assumes -call_geno).
 * `--call_thresh DOUBLE`: minimum threshold to call genotype; left as is if otherwise (assumes -call_geno).
@@ -61,9 +59,9 @@ As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 
 It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
 ### Possible analyses
-LD prunning - For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts\prune_SNPs.pl` to prune datasets but it is expected to be quite slow for large datasets.
+`LD prunning` - For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts\prune_graph.pl` to prune your dataset and only keep unlinked sites.
 
-LD decay - You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\XXX.R` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't really need all comparisons.
+`LD decay` - You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\XXX.R` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't really need all comparisons.
 
 ### Thread pool
 The thread pool	implementation was adapted from Mathias Brossard's and is freely available from:

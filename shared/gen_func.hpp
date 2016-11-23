@@ -15,6 +15,7 @@ const uint64_t N_GENO = 3;
 const double INF = 1e15;
 const double EPSILON = 1e-5;
 const uint64_t BUFF_LEN = 100000;
+const uint64_t ITER_MAX = 100;
 
 // General definitions
 #define abs(x) ((x) >= 0 ? (x) : -(x))
@@ -41,8 +42,9 @@ double*** transp_matrix(double***, uint64_t, uint64_t);
 double draw_rnd(gsl_rng*, uint64_t, uint64_t);
 void conv_space(double*, int, double (*func)(double));
 double logsum(double*, uint64_t);
-double logsum2(double, double);
-double logsum3(double, double, double);
+double logsum(double, double);
+double logsum(double, double, double);
+double logsum(double, double, double, double);
 void chomp(char*);
 gzFile open_gzfile(const char*, const char*, uint64_t = 10000);
 uint64_t read_file(const char*, char***, uint64_t = BUFF_LEN);
@@ -82,7 +84,12 @@ void cpy(void*, void*, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 
 bool miss_data(double*);
 void call_geno(double*, int, bool = true, double = 0, double = 0, int = 0);
-void post_prob(double*, double*, double*, uint64_t, bool = true);
-void calc_prior(double*, double, double);
-double est_maf(uint64_t, double**, double, bool);
-double est_maf(uint64_t, double**, double*, bool);
+void post_prob(double*, double*, double*, uint64_t);
+void calc_HWE(double*, double, double);
+double est_maf(uint64_t, double**, double);
+double est_maf(uint64_t, double**, double*);
+
+void bcf_pair_LD (double*, double**, double**, double, double, uint64_t, bool = true);
+int haplo_freq(double*, double**, double**, double, double, uint64_t, bool = true);
+int pair_freq_iter(double*, double**, double**, uint64_t);
+int pair_freq_iter_log(double*, double**, double**, uint64_t);

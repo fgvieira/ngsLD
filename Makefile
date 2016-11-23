@@ -1,7 +1,7 @@
 CC=gcc
 CXX=g++
 
-SHARED_DIR = ../shared
+SHARED_DIR = ./shared
 SHARED_LIB = gen_func.cpp read_data.cpp threadpool.c
 
 CFLAGS = -I$(SHARED_DIR)

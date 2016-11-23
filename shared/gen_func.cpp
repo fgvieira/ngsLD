@@ -1,31 +1,31 @@
 #include "gen_func.hpp"
 
 
-bool SIG_COND;
-int really_kill = 3;
-
 
 void warn(const char *func, const char *msg) {
   fflush(stdout);
-  fprintf(stderr, "\n[%s] WARN: %s\n", func, msg);
+  fprintf(stderr, "\n=======\nWARNING: [%s] %s\n=======\n\n", func, msg);
   fflush(stderr);
 }
 
 
 void error(const char *func, const char *msg) {
   fflush(stdout);
-  fprintf(stderr, "\n[%s] ERROR: %s\n", func, msg);
+  fprintf(stderr, "\n=====\nERROR: [%s] %s\n=====\n\n", func, msg);
   perror("\t");
   fflush(stderr);
   exit(-1);
 }
 
 
+bool SIG_COND;
+int really_kill = 3;
 void handler(int s) {
   if(SIG_COND)
     fprintf(stderr,"\n\"%s\" signal caught! Will try to exit nicely (no more threads are created but we will wait for the current threads to finish).\n", strsignal(s));
 
-  if(--really_kill != 3)
+  really_kill--;
+  if(really_kill > 0)
     fprintf(stderr,"\t-> If you really want to force an unclean exit Ctr+C %d more times\n", really_kill);
   fflush(stderr);
 
@@ -53,15 +53,14 @@ void catch_SIG(){
 
 
 double check_interv(double value, bool verbose) {
-  double errTol = 1e-5;
-
-  if (value != value) {
+  if (isnan(value))
     error(__FUNCTION__, "value is NaN!\n");
-  } else if(value < errTol) {
+
+  if(value < EPSILON) {
     value = 0;
     if(verbose && value < 0)
       fprintf(stderr, "\nWARN: value %f < 0!\n", value);
-  } else if(value > 1 - errTol) {
+  } else if(value > 1 - EPSILON) {
     value = 1;
     if(verbose && value > 1)
       fprintf(stderr, "\nWARN: value %f > 1!\n", value);
@@ -153,7 +152,7 @@ double logsum(double *a, uint64_t n){
 
 
 // Special logsum case for size == 2
-double logsum2(double a, double b){
+double logsum(double a, double b){
   double buf[2];
   buf[0] = a;
   buf[1] = b;
@@ -162,12 +161,23 @@ double logsum2(double a, double b){
 
 
 // Special logsum case for size == 3
-double logsum3(double a, double b, double c){
+double logsum(double a, double b, double c){
   double buf[3];
   buf[0] = a;
   buf[1] = b;
   buf[2] = c;
   return logsum(buf, 3);
+}
+
+
+// Special logsum case for size == 4
+double logsum(double a, double b, double c, double d){
+  double buf[4];
+  buf[0] = a;
+  buf[1] = b;
+  buf[2] = c;
+  buf[3] = d;
+  return logsum(buf, 4);
 }
 
 
@@ -214,7 +224,7 @@ uint64_t read_file(const char *in_file, char ***ptr, uint64_t buff_size){
   // Open file
   gzFile in_file_fh = gzopen(in_file, "r");
   if(in_file_fh == NULL)
-    error(__FUNCTION__, "cannot open file");
+    return -1;
 
   while(!gzeof(in_file_fh)){
     buf[0] = '\0';
@@ -819,12 +829,9 @@ void call_geno(double *geno, int n_geno, bool log_scale, double N_prob_thresh, d
 // Calculate posterio probabilities (PP) from GLs and prior
 // GL in log-space by default, but can be in normal-space if flag set
 // prior and PP always given log-space
-void post_prob(double *pp, double *lkl, double *prior, uint64_t n_geno, bool loglkl){
+void post_prob(double *pp, double *lkl, double *prior, uint64_t n_geno){
   for(uint64_t cnt = 0; cnt < n_geno; cnt++){
-    if(loglkl)
-      pp[cnt] = lkl[cnt];
-    else
-      pp[cnt] = log(lkl[cnt]);
+    pp[cnt] = lkl[cnt];
 
     if(prior != NULL)
       pp[cnt] += prior[cnt];
@@ -838,13 +845,13 @@ void post_prob(double *pp, double *lkl, double *prior, uint64_t n_geno, bool log
 
 
 
-// Calculate HWE priors
+// Calculate HWE genotype frequencies
 // MAF and F in normal-space
 // Genotype frequencies in log-space
-void calc_prior(double *priors, double freq, double F){
-  priors[0] = log(pow(1-freq,2)   +   (1-freq)*freq*F);
-  priors[1] = log(2*(1-freq)*freq - 2*(1-freq)*freq*F);
-  priors[2] = log(pow(freq,2)     +   (1-freq)*freq*F);
+void calc_HWE(double *genot_freq, double freq, double F){
+  genot_freq[0] = log(pow(1-freq,2)   +   (1-freq)*freq*F);
+  genot_freq[1] = log(2*(1-freq)*freq - 2*(1-freq)*freq*F);
+  genot_freq[2] = log(pow(freq,2)     +   (1-freq)*freq*F);
 
   /* Added to avoid impossible cases (like HET on an IBD position). This way, 
      the prior for an HET is not 0 and these cases can still be calculated. 
@@ -852,7 +859,7 @@ void calc_prior(double *priors, double freq, double F){
      optimized so it is probably better to keep the information and give preference to the GL.
   */
   if(F == 1)
-    priors[1] = -INF;
+    genot_freq[1] = -INF;
 }
 
 
@@ -860,17 +867,17 @@ void calc_prior(double *priors, double freq, double F){
 // Estimate site MAF from (logscaled) GL through an EM
 // If indF == NULL, assumes uniform prior
 // Else (0 < indF < 1), assumes HWE with specified level of inbreeding
-double est_maf(uint64_t n_ind, double **pdg, double F, bool loglkl){
+double est_maf(uint64_t n_ind, double **pdg, double F){
   double maf;
   double *indF = init_ptr(n_ind, F);
 
-  maf = est_maf(n_ind, pdg, indF, loglkl);
+  maf = est_maf(n_ind, pdg, indF);
 
   free_ptr((void*) indF);
   return maf;
 }
 
-double est_maf(uint64_t n_ind, double **pdg, double *indF, bool loglkl){
+double est_maf(uint64_t n_ind, double **pdg, double *indF){
   int iters = 0;
   double num = 0; // Expected number minor alleles
   double den = 0; // Expected total number of alleles
@@ -883,13 +890,13 @@ double est_maf(uint64_t n_ind, double **pdg, double *indF, bool loglkl){
     for(uint64_t i = 0; i < n_ind; i++){
       if(indF == NULL){
 	F = 0;
-	post_prob(pp, pdg[i], NULL, N_GENO, loglkl);
+	post_prob(pp, pdg[i], NULL, N_GENO);
       }else{
 	F = indF[i];
 	if(F < -1)
 	  error(__FUNCTION__, "indF must be between 0 < F < 1!");
-	calc_prior(prior, freq, F);
-	post_prob(pp, pdg[i], prior, N_GENO, loglkl);
+	calc_HWE(prior, freq, F);
+	post_prob(pp, pdg[i], prior, N_GENO);
       }
       conv_space(pp, N_GENO, exp);
 
@@ -903,4 +910,155 @@ double est_maf(uint64_t n_ind, double **pdg, double *indF, bool loglkl){
   }while( abs(prev_freq - freq) > EPSILON && iters++ < 100 );
 
   return freq;
+}
+
+
+
+
+// Adapted from BCFTOOLS:
+// https://github.com/lh3/samtools/blob/6bbe1609e10f27796e5bf29ac3207bb2e35ceac8/bcftools/em.c#L266-L310
+// Calculates LD directly from GLs by getting ML estimates (through an EM) of the four haplotype frequencies
+void bcf_pair_LD (double LD[3], double **s1, double **s2, double maf1, double maf2, uint64_t n_ind, bool log_scale)
+{
+  // Estimate haplotype frequencies
+  double hap_freq[4];
+  haplo_freq(hap_freq, s1, s2, maf1, maf2, n_ind, log_scale);
+
+  // Allele frequencies
+  double maf[2];
+  maf[0] = 1 - (hap_freq[0] + hap_freq[1]);
+  maf[1] = 1 - (hap_freq[0] + hap_freq[2]);
+
+  // calculate r^2
+  double r2, D, Dp;
+  D = hap_freq[0] * hap_freq[3] - hap_freq[1] * hap_freq[2]; // P_BA * P_ba - P_Ba * P_bA
+  // or
+  //D = hap_freq[0] - (1-maf[0]) * (1-maf[1]);               // P_BA - P_B * P_A
+  Dp = D / (D < 0 ? min(maf[0]*maf[1], (1-maf[0])*(1-maf[1])) : min(maf[0]*(1-maf[1]), (1-maf[0])*maf[1]) );
+  r2 = pow(D / sqrt(maf[0] * maf[1] * (1-maf[0]) * (1-maf[1])), 2);
+
+  /*
+  if(isnan(r2))
+    r2 = -1.0;
+  */
+
+  LD[0] = D;
+  LD[1] = Dp;
+  LD[2] = r2;
+}
+
+
+
+// Get ML estimate of haplotype frequencies
+int haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1, double maf2, uint64_t n_ind, bool log_scale){
+  double hap_freq_last[4];
+
+  if(maf1 < 0 || maf1 > 1 || maf2 < 0 || maf2 > 1)
+    return -1;
+
+  // Initialize haplotype frequencies
+  hap_freq[0] = (1 - maf1) * (1 - maf2); // P_BA
+  hap_freq[1] = (1 - maf1) * maf2;       // P_Ba
+  hap_freq[2] = maf1 * (1 - maf2);       // P_bA
+  hap_freq[3] = maf1 * maf2;             // P_ba
+
+  // iteration
+  for(uint64_t i = 0; i < ITER_MAX; i++) {
+    double eps = 0;
+    memcpy(hap_freq_last, hap_freq, 4 * sizeof(double));
+    if(log_scale)
+      pair_freq_iter_log(hap_freq, gl1, gl2, n_ind);
+    else
+      pair_freq_iter(hap_freq, gl1, gl2, n_ind);
+      
+    for (uint64_t j = 0; j < 4; j++) {
+      double x = fabs(hap_freq[j] - hap_freq_last[j]);
+      if (x > eps) eps = x;
+    }
+
+    if(eps < EPSILON)
+      break;
+  }
+
+  return 0;
+}
+
+
+
+// Function to estimate haplotype frequencies from GLs (all in normal scale)
+#define _G1(h, k) ((h>>1&1) + (k>>1&1))
+#define _G2(h, k) ((h&1) + (k&1))
+
+int pair_freq_iter(double f[4], double **s1, double **s2, uint64_t n)
+{
+  double ff[4];
+  int k, h;
+
+  memset(ff, 0, 4 * sizeof(double));
+
+  for (uint64_t i = 0; i < n; ++i) {
+    double *p[2], sum, tmp;
+    p[0] = s1[i];
+    p[1] = s2[i];
+    sum = 0;
+    for (k = 0, sum = 0.; k < 4; ++k)
+      for (h = 0; h < 4; ++h)
+	sum += f[k] * f[h] * p[0][_G1(k,h)] * p[1][_G2(k,h)];
+    for (k = 0; k < 4; ++k) {
+      tmp = f[0] * (p[0][_G1(0,k)] * p[1][_G2(0,k)] + p[0][_G1(k,0)] * p[1][_G2(k,0)])
+	+ f[1] * (p[0][_G1(1,k)] * p[1][_G2(1,k)] + p[0][_G1(k,1)] * p[1][_G2(k,1)])
+	+ f[2] * (p[0][_G1(2,k)] * p[1][_G2(2,k)] + p[0][_G1(k,2)] * p[1][_G2(k,2)])
+	+ f[3] * (p[0][_G1(3,k)] * p[1][_G2(3,k)] + p[0][_G1(k,3)] * p[1][_G2(k,3)]);
+      ff[k] += f[k] * tmp / sum;
+    }
+  }
+
+  // Calculate frequency
+  for (k = 0; k < 4; ++k)
+    f[k] = ff[k] / (2 * n);
+
+  // Normalize
+  for (k = 0; k < 4; k++)
+    f[k] /= f[0] + f[1] + f[2] + f[3];
+
+  return 0;
+}
+
+
+int pair_freq_iter_log(double f[4], double **s1, double **s2, uint64_t n)
+{
+  double ff[4];
+  int k, h;
+
+  // Convert haplot frequencies to log-scale
+  conv_space(f, 4, log);
+  for (k = 0; k < 4; ++k)
+    ff[k] = -INFINITY;
+
+  for (uint64_t i = 0; i < n; ++i) {
+    double *p[2], sum, tmp;
+    p[0] = s1[i];
+    p[1] = s2[i];
+    sum = -INFINITY;
+    for (k = 0; k < 4; ++k)
+      for (h = 0; h < 4; ++h)
+	sum = logsum(sum, f[k] + f[h] + p[0][_G1(k,h)] + p[1][_G2(k,h)]);
+    for (k = 0; k < 4; ++k) {
+      tmp = logsum(f[0] + logsum(p[0][_G1(0,k)] + p[1][_G2(0,k)], p[0][_G1(k,0)] + p[1][_G2(k,0)]),
+		   f[1] + logsum(p[0][_G1(1,k)] + p[1][_G2(1,k)], p[0][_G1(k,1)] + p[1][_G2(k,1)]),
+		   f[2] + logsum(p[0][_G1(2,k)] + p[1][_G2(2,k)], p[0][_G1(k,2)] + p[1][_G2(k,2)]),
+		   f[3] + logsum(p[0][_G1(3,k)] + p[1][_G2(3,k)], p[0][_G1(k,3)] + p[1][_G2(k,3)]));
+      ff[k] = logsum(ff[k], f[k] + tmp - sum);
+    }
+  }
+
+  // Calculate frequency
+  for (k = 0; k < 4; ++k)
+    f[k] = exp(ff[k]) / (2 * n);
+
+  // Normalize
+  for (k = 0; k < 4; k++)
+    f[k] /= f[0] + f[1] + f[2] + f[3];
+
+  return 0;
 }

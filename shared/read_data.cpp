@@ -111,7 +111,7 @@ double* read_pos(char *in_pos, uint64_t n_sites){
 
   for(uint64_t s = 1; s <= n_sites; s++){
     if( gzgets(in_pos_fh, buf, BUFF_LEN) == NULL)
-      error(__FUNCTION__, "cannot read POS file!");
+      error(__FUNCTION__, "cannot read next site from POS file!");
     // Remove trailing newline
     chomp(buf);
     // Check if empty
