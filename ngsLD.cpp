@@ -142,6 +142,13 @@ int main (int argc, char** argv) {
 
 
 
+  // DEBUG
+  if(pars->verbose >= 7)
+    for(uint64_t s = 1; s <= min(10, pars->n_sites); s++)
+      fprintf(stderr, "%lu\t%s\t%f (%f %f %f)\n", s, pars->labels[s-1], pars->maf[s], pars->geno_lkl[s][0][0], pars->geno_lkl[s][0][1], pars->geno_lkl[s][0][2]);
+
+
+
   //////////////////
   // Analyze Data //
   //////////////////
