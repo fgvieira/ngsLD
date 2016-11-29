@@ -10,18 +10,19 @@
 
 =head1 NAME
 
-    prune_graph.pl v1.0.6
+    prune_graph.pl v1.0.7
 
 =head1 SYNOPSIS
 
-    perl prune_graph.pl --in_file /path/to/input/file [--subset /path/to/subset/file] [--max_dist +Inf] [--min_weight 0] [--weight_field 4] [--print_excl /path/to/subset/out_excl.gz]
+    perl prune_graph.pl [OPTIONS]
 
-    --in_file       = File with input network (default STDIN)
+    --in_file       = File with input network [STDIN]
     --subset        = File with node IDs to include (one per line)
     --max_dist      = Maximum distance between nodes (input file 3rd column) to assume they are connected
     --min_weight    = Minimum weight to consider an edge (in --weight_field)
-    --weight_field  = Which column from input file has the weight
+    --weight_field  = Which column from input file has the weight [4]
     --print_excl    = File to dump the name of excluded nodes
+    --out           = Path to output file [STDOUT]
 
 =head1 DESCRIPTION
 
@@ -56,13 +57,14 @@ use Graph::Easy;
 use Math::BigInt;
 use IO::Zlib;
 
-my ($in_file, $subset_file, $max_dist, $min_weight, $weight_field, $print_excl, $debug);
+my ($in_file, $subset_file, $max_dist, $min_weight, $weight_field, $print_excl, $out_file, $debug);
 my ($cnt, $graph, @excl, %subset);
 
 $in_file = '-';
 $max_dist = '+inf';
 $min_weight = 0;
 $weight_field = 4;
+$out_file = '-';
 $debug = 0;
 $cnt = 0;
 
@@ -74,6 +76,7 @@ GetOptions('h|help'             => sub { exec('perldoc',$0); exit; },
            'r|min_weight:s'     => \$min_weight,
            'f|weight_field:s'   => \$weight_field,
 	   'x|print_excl:s'     => \$print_excl,
+	   'o|out:s'            => \$out_file,
 	   'debug!'             => \$debug,
     );
 
@@ -145,10 +148,13 @@ $FILE->close if($in_file ne '-');
 # Print stats for read nodes and edges
 print(STDERR "### Parsed ".$cnt." interactions between ".$graph->nodes()." nodes.\n");
 
+# Open output filehandle
+open(OUT, ">".$out_file) || die("ERROR: cannot open OUTPUT file ".$out_file.": ".$!."!");
+
 # Parse unconnected nodes
 foreach my $node ( $graph->nodes() ){
     if($node->edges() == 0){
-	print($node->label."\n");
+	print(OUT $node->label."\n");
 	$graph->del_node($node);
     }
 }
@@ -164,12 +170,7 @@ if($debug){
 }
 
 
-# Open file to store EXCLUDED nodes
-open(EXCL, ">".$print_excl) || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!") if($print_excl);
-#my $EXCL = new IO::Zlib;
-#$EXCL->open($print_excl, (substr($print_excl, -3) eq '.gz' ? "wb9" : "wT")) || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!") if($print_excl);
-
-
+# Prune graph
 if(0){
     # Slow algorithm
     @excl = &prune_graph($graph, $debug);
@@ -179,6 +180,10 @@ if(0){
 
 
 if($print_excl) {
+    # Open file to store EXCLUDED nodes
+    open(EXCL, ">".$print_excl) || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
+    #my $EXCL = new IO::Zlib;
+    #$EXCL->open($print_excl, (substr($print_excl, -3) eq '.gz' ? "wb9" : "wT")) || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
     # Print EXCL nodes
     print(EXCL $_."\n") for(@excl);
     # Close file-handle for 
@@ -196,9 +201,9 @@ if($debug){
 
 # Print pruned nodes
 for my $node ($graph->nodes()){
-    print($node->label."\n");
+    print(OUT $node->label."\n");
 }
-
+close(OUT);
 
 exit();
 
