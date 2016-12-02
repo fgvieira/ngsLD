@@ -1,6 +1,5 @@
 
 #include "read_data.hpp"
-#include "gen_func.hpp"
 
 // Reads both called genotypes (1 field per site and indiv), genotype lkls or genotype post probs (3 fields per site and indiv)
 double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool in_logscale, uint64_t n_ind, uint64_t n_sites){
@@ -28,6 +27,11 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool in_logscale,
 	  conv_space(geno[i][s], N_GENO, log);
 	// Normalize GL
 	post_prob(geno[i][s], geno[i][s], NULL, N_GENO);
+	// Check if OK
+        if(isnan(geno[i][s][0]) ||
+           isnan(geno[i][s][1]) ||
+           isnan(geno[i][s][2]))
+          error(__FUNCTION__, "NaN found! Is the file format correct?");
       }
     }
     else{
@@ -43,8 +47,12 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool in_logscale,
 
       // Check if header and skip
       if(!n_fields){
-	s--;
 	fprintf(stderr, "> Header found! Skipping line...\n");
+        if(s != 1){
+          warn(__FUNCTION__, " header found but not on first line. Is this an error?");
+          fprintf(stderr, "%s/n", buf);
+        }
+        s--;
 	continue;
       }
 
@@ -122,8 +130,12 @@ double* read_pos(char *in_pos, uint64_t n_sites){
 
     // Check if header and skip
     if(!n_fields || strtod(t[1], NULL)==0){
-      s--;
       fprintf(stderr, "> Header found! Skipping line...\n");
+      if(s != 1){
+	warn(__FUNCTION__, " header found but not on first line. Is this an error?");
+	fprintf(stderr, "%s/n", buf);
+      }
+      s--;
       continue;
     }
 

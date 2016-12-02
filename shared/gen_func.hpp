@@ -18,7 +18,7 @@ const uint64_t BUFF_LEN = 100000;
 const uint64_t ITER_MAX = 100;
 
 // General definitions
-#define abs(x) ((x) >= 0 ? (x) : -(x))
+#define abs(x)   ((x) >= 0 ? (x) : -(x))
 #define min(a,b) ((a) <= (b) ? (a) : (b))
 #define max(a,b) ((a) >= (b) ? (a) : (b))
 #define bit_test(a,b)   ((a) >> (b) & 1)
@@ -26,11 +26,11 @@ const uint64_t ITER_MAX = 100;
 #define bit_set(a,b)    ((a) |  ((uinteger)1 << (b)))
 
 // PATH bitwise operators
-#define path_pos_get(seq, pos) ( seq[pos/8]  & (1 << pos%8) )
+#define path_pos_get(seq, pos)  ( seq[pos/8]  & (1 << pos%8) )
 #define path_pos_set0(seq, pos) ( seq[pos/8] &= ~(1 << pos%8) )
 #define path_pos_set1(seq, pos) ( seq[pos/8] |= (1 << pos%8) )
 
-
+// Function prototypes
 void warn(const char*, const char*);
 void error(const char*, const char*);
 void handler(int);
@@ -48,6 +48,7 @@ double logsum(double, double, double, double);
 void chomp(char*);
 gzFile open_gzfile(const char*, const char*, uint64_t = 10000);
 uint64_t read_file(const char*, char***, uint64_t = BUFF_LEN);
+uint64_t read_file(const char*, double***, int, uint64_t = BUFF_LEN);
 
 uint64_t split(char*, const char*, int**);
 uint64_t split(char*, const char*, float**);

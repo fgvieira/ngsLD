@@ -216,7 +216,7 @@ gzFile open_gzfile(const char* name, const char* mode, uint64_t buf_size){
 
 // Read data from file and place into array
 uint64_t read_file(const char *in_file, char ***ptr, uint64_t buff_size){
-  uint64_t cnt = 0;
+  uint64_t lines = 0;
   char buf[buff_size];
   char **tmp = NULL;
   uint64_t max_len = 0;
@@ -236,24 +236,43 @@ uint64_t read_file(const char *in_file, char ***ptr, uint64_t buff_size){
     if(strlen(buf) == 0)
       continue;
     // Alloc memory
-    tmp = (char**) realloc(tmp, (cnt+1)*sizeof(char*));
-    tmp[cnt] = (char*) calloc(strlen(buf)+1, sizeof(char));
-    strcpy(tmp[cnt], buf);
-    cnt++;
+    tmp = (char**) realloc(tmp, (lines+1)*sizeof(char*));
+    tmp[lines] = (char*) calloc(strlen(buf)+1, sizeof(char));
+    strcpy(tmp[lines], buf);
+    lines++;
     if(strlen(buf) > max_len)
       max_len = strlen(buf);
   }
 
   // Copy to final array
-  *ptr = init_ptr(cnt, max_len+1, (const char*) '\0');
-  for(uint64_t i = 0; i < cnt; i++){
+  *ptr = init_ptr(lines, max_len+1, (const char*) '\0');
+  for(uint64_t i = 0; i < lines; i++){
     strcpy(ptr[0][i], tmp[i]);
     free(tmp[i]);
   }
   free(tmp);
   
   gzclose(in_file_fh);
-  return cnt;
+  return lines;
+}
+
+
+
+// Read data from file and place into array double
+uint64_t read_file(const char *in_file, double ***ptr, int cols, uint64_t buff_size){
+  char ***tmp = NULL;
+  uint64_t lines = read_file(in_file, tmp, buff_size);
+
+  if(lines <= 0)
+    error(__FUNCTION__, "cannot read file!");
+
+  *ptr = init_ptr(lines, 0, (double) 0);
+  for(uint64_t i = 0; i < lines; i++){
+    if(split(*tmp[i], (const char*) " \t", ptr[i]) != (uint64_t) cols)
+      error(__FUNCTION__, "number of columns do not match!");
+  }
+
+  return lines;
 }
 
 
@@ -689,14 +708,22 @@ char **init_ptr(uint64_t A, uint64_t B, const char *init){
   if(A < 1)
     error(__FUNCTION__, "invalid size of array!");
 
+  // Search for special characters
+  char* pinit = init_ptr(BUFF_LEN, init);
+  char* pch = strchr(pinit, '#');
+
   char **ptr;
   try{
     ptr = new char*[A];
   }catch (std::bad_alloc&){
     error(__FUNCTION__, "cannot allocate more memory!");
   }
-  for(uint64_t a = 0; a < A; a++)
-    ptr[a] = init_ptr(B, init);
+
+  for(uint64_t a = 0; a < A; a++){
+    if(pch)
+      sprintf(pch, "%lu", a);
+    ptr[a] = init_ptr(B, pinit);
+  }
 
   return ptr;
 }
