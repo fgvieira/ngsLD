@@ -130,7 +130,8 @@ int main (int argc, char** argv) {
   // Read labels
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Getting sites labels\n");
-  if(read_file(pars->pos, &pars->labels) != pars->n_sites)
+  pars->labels = read_file(pars->pos, 0, pars->n_sites, BUFF_LEN);
+  if(pars->labels == NULL)
     error(__FUNCTION__, "number of labels does not match number of sites!");
   // Fix labels...
   char* ptr;
@@ -161,7 +162,7 @@ int main (int argc, char** argv) {
   // Allocate memory for array of pthread structures
   pth_struct **pth = new pth_struct*[pars->n_sites+1];
 
-  for(uint64_t s1 = 1; s1 < pars->n_sites; s1++){
+  for(uint64_t s1 = 1; s1 <= pars->n_sites; s1++){
     // Fill in pthread structure
     pth[s1] = new pth_struct;
     pth[s1]->pars = pars;
@@ -184,7 +185,10 @@ int main (int argc, char** argv) {
       error(__FUNCTION__, "thread failure!");
 
     if(pars->verbose >= 3)
-      fprintf(stderr, "> Launched thread for site %lu\n", s1);
+      if(s1 == 1 ||
+         s1 == pars->n_sites ||
+         s1 % 100000 == 0)
+        fprintf(stderr, "> Launched thread for site %lu (%s)\n", s1, pars->labels[s1-1]);
   }
 
 
@@ -237,7 +241,7 @@ void calc_pair_LD (void *pth){
 
 
   // Calc LD for pairs of SNPs < max_kb_dist
-  do{
+  while (s2 < p->pars->n_sites){
     s2++;
     dist += p->pars->pos_dist[s2];
 
@@ -279,7 +283,7 @@ void calc_pair_LD (void *pth){
 	    LD_GL[2],
 	    LD_GL[3]
 	    );
-  } while (s2 < p->pars->n_sites);
+  }
 
   // Free memory
   gsl_rng_free(p->rnd_gen);

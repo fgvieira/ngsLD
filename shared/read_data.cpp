@@ -6,8 +6,7 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool in_logscale,
   uint64_t n_fields;
   // Depending on input we will have either 1 or 3 genot
   uint64_t n_geno = (in_probs ? N_GENO : 1);
-  double *t;
-  double *ptr;
+  double *t, *ptr;
   char *buf = init_ptr(BUFF_LEN, (const char*) '\0');
 
   // Allocate memory
@@ -103,7 +102,6 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool in_logscale,
 
 double* read_pos(char *in_pos, uint64_t n_sites){
   uint64_t n_fields;
-  char **t;
   char *buf = init_ptr(BUFF_LEN, (const char*) '\0');
 
   char *prev_chr = init_ptr(BUFF_LEN, (const char*) '\0');
@@ -118,6 +116,7 @@ double* read_pos(char *in_pos, uint64_t n_sites){
     error(__FUNCTION__, "cannot open POS file!");
 
   for(uint64_t s = 1; s <= n_sites; s++){
+    char **tmp;
     if( gzgets(in_pos_fh, buf, BUFF_LEN) == NULL)
       error(__FUNCTION__, "cannot read next site from POS file!");
     // Remove trailing newline
@@ -126,10 +125,10 @@ double* read_pos(char *in_pos, uint64_t n_sites){
     if(strlen(buf) == 0)
       continue;
     // Parse input line into array
-    n_fields = split(buf, (const char*) " \t", &t);
+    n_fields = split(buf, (const char*) " \t", &tmp);
 
     // Check if header and skip
-    if(!n_fields || strtod(t[1], NULL)==0){
+    if(!n_fields || strtod(tmp[1], NULL)==0){
       fprintf(stderr, "> Header found! Skipping line...\n");
       if(s != 1){
 	warn(__FUNCTION__, " header found but not on first line. Is this an error?");
@@ -144,22 +143,20 @@ double* read_pos(char *in_pos, uint64_t n_sites){
 
     // If first chr to be parsed
     if(strlen(prev_chr) == 0)
-      strcpy(prev_chr, t[0]);
+      strcpy(prev_chr, tmp[0]);
     
-    if(strcmp(prev_chr, t[0]) == 0){
-      pos_dist[s] = strtod(t[1], NULL) - prev_pos;
+    if(strcmp(prev_chr, tmp[0]) == 0){
+      pos_dist[s] = strtod(tmp[1], NULL) - prev_pos;
       if(pos_dist[s] < 1)
 	error(__FUNCTION__, "invalid distance between adjacent sites!");
     }else{
       pos_dist[s] = INFINITY;
-      strcpy(prev_chr, t[0]);
+      strcpy(prev_chr, tmp[0]);
     }
-    prev_pos = strtoul(t[1], NULL, 0);
+    prev_pos = strtoul(tmp[1], NULL, 0);
 
     // Free memory
-    for(uint64_t cnt = 0; cnt < n_fields; cnt++)
-      delete [] t[cnt];
-    delete [] t;
+    free_ptr((void**) tmp, n_fields);
   }
 
   // Check if file is at EOF

@@ -3,19 +3,20 @@
 
 
 // Forward function
-double forward(double **Fw, double *Q, double alpha, double **e_prob, double *pos_dist, uint64_t length, int n_states){
+double forward(double **Fw, double *q_prop, double alpha, double **e_prob, double *pos_dist, uint64_t length, int n_states){
   double *tmp = init_ptr(n_states, 0.0);
   // Initialize Fw
   for(int k = 0; k < n_states; k++)
-    Fw[0][k] = log(Q[k]);
+    Fw[0][k] = log(q_prop[k]);
 
+  // Switch from state k -> l
   for (uint64_t s = 1; s <= length; s++)
     for(int l = 0; l < n_states; l++){
       for(int k = 0; k < n_states; k++){
-        tmp[k] = Fw[s-1][k] + calc_trans(k,l,Q[l],alpha,pos_dist[s]);
+        tmp[k] = Fw[s-1][k] + calc_trans(k,l,q_prop[l],alpha,pos_dist[s]);
 
         if(isnan(tmp[k])){
-          printf("site: %lu\tp_state: %d\tn_state: %d\tFw: %.15f\tQ: %.15f\talpha: %.15f\tdist: %f\ttrans: %f\temission: %f\n", s, k, l, Fw[s-1][k], Q[l], alpha, pos_dist[s], calc_trans(k,l,Q[l],alpha,pos_dist[s]), e_prob[s][l]);
+          printf("site: %lu\tp_state: %d\tn_state: %d\tFw: %.15f\tq_prop: %.15f\talpha: %.15f\tdist: %f\ttrans: %f\temission: %f\n", s, k, l, Fw[s-1][k], q_prop[l], alpha, pos_dist[s], calc_trans(k,l,q_prop[l],alpha,pos_dist[s]), e_prob[s][l]);
           error(__FUNCTION__, "invalid Lkl found!");
         }
       }
@@ -29,19 +30,20 @@ double forward(double **Fw, double *Q, double alpha, double **e_prob, double *po
 
 
 // Backward function
-double backward(double **Bw, double *Q, double alpha, double **e_prob, double *pos_dist, uint64_t length, int n_states){
+double backward(double **Bw, double *q_prop, double alpha, double **e_prob, double *pos_dist, uint64_t length, int n_states){
   double *tmp = init_ptr(n_states, 0.0);
   // Initialize Bw
   for(int k = 0; k < n_states; k++)
     Bw[length][k] = log(1);
 
+  // Switch from state k -> l
   for (uint64_t s = length; s > 0; s--){
     for(int k = 0; k < n_states; k++){
       for(int l = 0; l < n_states; l++){
-	tmp[l] = calc_trans(k,l,Q[l],alpha,pos_dist[s]) + e_prob[s][l] + Bw[s][l];
+	tmp[l] = calc_trans(k,l,q_prop[l],alpha,pos_dist[s]) + e_prob[s][l] + Bw[s][l];
 
         if(isnan(tmp[l])){
-          printf("site: %lu\tp_state: %d\tn_state: %d\tBw-1: %.10f\tBw: %.10f\tQ: %.10f\talpha: %.10f\tdist: %f\ttrans: %f\temission: %f\n", s, k, l, tmp[l], Bw[s][l], Q[l], alpha, pos_dist[s], calc_trans(k,l,Q[l],alpha,pos_dist[s]), e_prob[s][l]);
+          printf("site: %lu\tp_state: %d\tn_state: %d\tBw-1: %.10f\tBw: %.10f\tq_prop: %.10f\talpha: %.10f\tdist: %f\ttrans: %f\temission: %f\n", s, k, l, tmp[l], Bw[s][l], q_prop[l], alpha, pos_dist[s], calc_trans(k,l,q_prop[l],alpha,pos_dist[s]), e_prob[s][l]);
           error(__FUNCTION__, "invalid Lkl found!");
         }
       }
@@ -51,17 +53,53 @@ double backward(double **Bw, double *Q, double alpha, double **e_prob, double *p
 
   // Finalize Bw
   for(int k = 0; k < n_states; k++)
-    Bw[0][k] += log(Q[k]);
+    Bw[0][k] += log(q_prop[k]);
 
   free_ptr((void*) tmp);
   return logsum(Bw[0], n_states);
 }
 
-double viterbi(double **Vi, double *Q, double alpha, double **e_prob, char *path, double *pos_dist, uint64_t length, int n_states){
+double viterbi_NEW(double **Vi, double *q_prop, double alpha, double **e_prob, char *path, double *pos_dist, uint64_t length, int n_states){
+  int max_pos;
+  int **Vi_path = init_ptr(length+1, n_states, -1);
+  double *tmp = init_ptr(n_states, 0.0);
+
+  // Initialize Vi
+  for(int k = 0; k < n_states; k++)
+    Vi[0][k] = log(q_prop[k]);
+
+  for (uint64_t s = 1; s <= length; s++)
+    for(int l = 0; l < n_states; l++){
+      for(int k = 0; k < n_states; k++){
+	tmp[k] = Vi[s-1][k] + calc_trans(k,l,q_prop[l],alpha,pos_dist[s]);
+
+        if(isnan(tmp[k])){
+          printf("site: %lu\tp_state: %d\tn_state: %d\tFw: %.15f\tq_prop: %.15f\talpha: %.15f\tdist: %f\ttrans: %f\temission: %f\n", s, k, l, Vi[s-1][k], q_prop[l], alpha, pos_dist[s], calc_trans(k,l,q_prop[l],alpha,pos_dist[s]), e_prob[s][l]);
+          error(__FUNCTION__, "invalid Lkl found!");
+        }
+      }
+      max_pos = array_max_pos(tmp, n_states);
+      Vi[s][l] = tmp[max_pos] + e_prob[s][l];
+      Vi_path[s][l] = max_pos;
+    }
+
+
+  // Trace back the Viterbi path
+  path[length] = array_max_pos(Vi[length], n_states);
+  for (uint64_t s = length; s > 0; s--)
+    path[s-1] = Vi_path[s][(int) path[s]];
+
+  free_ptr((void**) Vi_path, length);
+  free_ptr((void*) tmp);
+  return tmp[(int) path[length]];
+}
+
+
+double viterbi(double **Vi, double *q_prop, double alpha, double **e_prob, char *path, double *pos_dist, uint64_t length, int n_states){
   double *Vi_prob = init_ptr(n_states, 0.0);
   // Initialize Vi
   for(int k = 0; k < n_states; k++)
-    Vi_prob[k] = log(Q[k]);
+    Vi_prob[k] = log(q_prop[k]);
 
   for (uint64_t s = 1; s <= length; s++){
     for(int l = 0; l < n_states; l++){
@@ -69,7 +107,7 @@ double viterbi(double **Vi, double *Q, double alpha, double **e_prob, char *path
       uint64_t k_vmax = 0;
 
       for(int k = 0; k < n_states; k++){
-        double pval = Vi_prob[k] + calc_trans(k,l,Q[l],alpha,pos_dist[s]);
+        double pval = Vi_prob[k] + calc_trans(k,l,q_prop[l],alpha,pos_dist[s]);
 	if( vmax < pval ) { vmax = pval; k_vmax = k; }
       }
 
@@ -89,11 +127,11 @@ double viterbi(double **Vi, double *Q, double alpha, double **e_prob, char *path
 
 
 // Calculates transition probabilities between states k and l, depending on distance, inbreeding and transition rate
-double calc_trans(char k, char l, double Q, double alpha, double pos_dist){
+double calc_trans(char k, char l, double q_prop, double alpha, double pos_dist){
   double trans = 0;
   double coanc_change = exp(-alpha*pos_dist);
   
-  trans = (1-coanc_change) * Q;
+  trans = (1-coanc_change) * q_prop;
   if(k == l)
     trans += coanc_change;
 
@@ -106,11 +144,27 @@ double calc_trans(char k, char l, double Q, double alpha, double pos_dist){
 double calc_emission(double gl[3], double maf, uint64_t F){
   if(maf < 0 || maf > 1)
     error(__FUNCTION__, "invalid MAF!");
+  if(F < 0 || F > 1)
+    error(__FUNCTION__, "invalid F!");
 
-  double emission[3];
-  calc_HWE(emission, maf, F);
+  double geno[3];
+  calc_HWE(geno, maf, F, true);
 
-  return logsum(gl[0]+emission[0], gl[1]+emission[1], gl[2]+emission[2]);
+  return logsum(gl[0]+geno[0], gl[1]+geno[1], gl[2]+geno[2]);
+}
+
+double calc_emission(double gl[3], double maf1, double maf2){
+  if(maf1 < 0 || maf1 > 1)
+    error(__FUNCTION__, "invalid MAF1!");
+  if(maf2 < 0 || maf2 > 1)
+    error(__FUNCTION__, "invalid MAF2!");
+
+  double geno[3];
+  geno[0] = log((1 - maf1) * (1 - maf2));
+  geno[1] = log((1-maf1) * maf2 + maf1 * (1-maf2));
+  geno[2] = log(maf1 * maf2);
+
+  return logsum(gl[0]+geno[0], gl[1]+geno[1], gl[2]+geno[2]);
 }
 
 

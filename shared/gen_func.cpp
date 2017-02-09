@@ -215,64 +215,58 @@ gzFile open_gzfile(const char* name, const char* mode, uint64_t buf_size){
 
 
 // Read data from file and place into array
-uint64_t read_file(const char *in_file, char ***ptr, uint64_t buff_size){
-  uint64_t lines = 0;
+char **read_file(const char *in_file, uint64_t start_line, uint64_t n_lines, uint64_t buff_size){
+  uint64_t cnt = 0;
   char buf[buff_size];
-  char **tmp = NULL;
-  uint64_t max_len = 0;
+  char **ptr = init_ptr(n_lines-start_line, 0, (const char*) '\0');
 
   // Open file
   gzFile in_file_fh = gzopen(in_file, "r");
   if(in_file_fh == NULL)
-    return -1;
+    return NULL;
 
-  while(!gzeof(in_file_fh)){
+  for(cnt = 0; cnt < n_lines && !gzeof(in_file_fh); cnt++){
     buf[0] = '\0';
     // Read line from file
     gzgets(in_file_fh, buf, buff_size);
     // Remove trailing newline
     chomp(buf);
     // Check if empty
-    if(strlen(buf) == 0)
+    if(strlen(buf) == 0){
+      cnt--;
       continue;
-    // Alloc memory
-    tmp = (char**) realloc(tmp, (lines+1)*sizeof(char*));
-    tmp[lines] = (char*) calloc(strlen(buf)+1, sizeof(char));
-    strcpy(tmp[lines], buf);
-    lines++;
-    if(strlen(buf) > max_len)
-      max_len = strlen(buf);
+    }
+    // Skip until star_line
+    if(cnt < start_line){
+      cnt--;
+      continue;
+    }
+    // Alloc memory and copy line
+    ptr[cnt] = init_ptr(strlen(buf)+1, buf);
   }
 
-  // Copy to final array
-  *ptr = init_ptr(lines, max_len+1, (const char*) '\0');
-  for(uint64_t i = 0; i < lines; i++){
-    strcpy(ptr[0][i], tmp[i]);
-    free(tmp[i]);
-  }
-  free(tmp);
-  
+  if(cnt != n_lines)
+    error(__FUNCTION__, "could not read specified number of lines!");
+
   gzclose(in_file_fh);
-  return lines;
+  return ptr;
 }
 
 
 
 // Read data from file and place into array double
-uint64_t read_file(const char *in_file, double ***ptr, int cols, uint64_t buff_size){
-  char ***tmp = NULL;
-  uint64_t lines = read_file(in_file, tmp, buff_size);
+double **read_file(const char *in_file, uint64_t start_line, uint64_t n_lines, int n_cols, uint64_t buff_size){
+  char **tmp = read_file(in_file, start_line, n_lines, buff_size);
+  if(tmp == NULL)
+    return NULL;
 
-  if(lines <= 0)
-    error(__FUNCTION__, "cannot read file!");
-
-  *ptr = init_ptr(lines, 0, (double) 0);
-  for(uint64_t i = 0; i < lines; i++){
-    if(split(*tmp[i], (const char*) " \t", ptr[i]) != (uint64_t) cols)
+  double **ptr = init_ptr(n_lines-start_line, 0, 0.0);
+  for(uint64_t cnt = 0; cnt < n_lines; cnt++)
+    if(split(tmp[cnt], (const char*) " \t", &ptr[cnt]) != n_cols)
       error(__FUNCTION__, "number of columns do not match!");
-  }
 
-  return lines;
+  free_ptr((void**) tmp, n_lines);
+  return ptr;
 }
 
 
@@ -303,8 +297,8 @@ split()
  string (str), splits into 
  array (out) on char (sep)
 ***************************/
-uint64_t split(char *str, const char *sep, int **out){
-  uint64_t i = strlen(str);
+int split(char *str, const char *sep, int **out){
+  int i = strlen(str);
   int *buf = init_ptr(i, 0);
 
   i = 0;
@@ -333,8 +327,8 @@ uint64_t split(char *str, const char *sep, int **out){
 }
 
 
-uint64_t split(char *str, const char *sep, float **out){
-  uint64_t i = strlen(str);
+int split(char *str, const char *sep, float **out){
+  int i = strlen(str);
   float *buf = init_ptr(i, (float) 0);
 
   i = 0;
@@ -357,14 +351,14 @@ uint64_t split(char *str, const char *sep, float **out){
 
   *out = init_ptr(i, (float) 0);
   memcpy(*out, buf, i*sizeof(float));
-
   delete [] buf;
+
   return(i);
 }
 
 
-uint64_t split(char *str, const char *sep, double **out){
-  uint64_t i = strlen(str);
+int split(char *str, const char *sep, double **out){
+  int i = strlen(str);
   double *buf = init_ptr(i, (double) 0);
 
   i = 0;
@@ -387,14 +381,14 @@ uint64_t split(char *str, const char *sep, double **out){
 
   *out = init_ptr(i, (double) 0);
   memcpy(*out, buf, i*sizeof(double));
-
   delete [] buf;
+
   return(i);
 }
 
 
-uint64_t split(char *str, const char *sep, char ***out){
-  uint64_t i = strlen(str);
+int split(char *str, const char *sep, char ***out){
+  int i = strlen(str);
   char **buf = init_ptr(i, 0, (char*) NULL);
 
   i = 0;
@@ -403,8 +397,8 @@ uint64_t split(char *str, const char *sep, char ***out){
 
   *out = init_ptr(i, 0, (char*) NULL);
   memcpy(*out, buf, i*sizeof(char*));
-
   delete [] buf;
+
   return(i);
 }
 
@@ -476,11 +470,11 @@ char *join(char *array, uint64_t size, const char *sep){
   char *buf = init_ptr(size*5, (char*) NULL);
   uint64_t len = 0;
 
-  sprintf(buf, "%d", array[0]);
+  sprintf(buf, "%c", array[0]);
   len = strlen(buf);
 
   for(uint64_t cnt = 1; cnt < size; cnt++){
-    sprintf(buf+len, "%s%d", sep, array[cnt]);
+    sprintf(buf+len, "%s%c", sep, array[cnt]);
     len = strlen(buf);
   }
 
@@ -540,6 +534,24 @@ int *init_ptr(uint64_t A, int init){
   }
   for(uint64_t a = 0; a < A; a++)
     ptr[a] = init;
+
+  return ptr;
+}
+
+
+
+int **init_ptr(uint64_t A, uint64_t B, int init){
+  if(A < 1)
+    error(__FUNCTION__, "invalid size of array!");
+
+  int **ptr;
+  try{
+    ptr = new int*[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
+  for(uint64_t a = 0; a < A; a++)
+    ptr[a] = init_ptr(B, init);
 
   return ptr;
 }
@@ -708,10 +720,6 @@ char **init_ptr(uint64_t A, uint64_t B, const char *init){
   if(A < 1)
     error(__FUNCTION__, "invalid size of array!");
 
-  // Search for special characters
-  char* pinit = init_ptr(BUFF_LEN, init);
-  char* pch = strchr(pinit, '#');
-
   char **ptr;
   try{
     ptr = new char*[A];
@@ -719,11 +727,17 @@ char **init_ptr(uint64_t A, uint64_t B, const char *init){
     error(__FUNCTION__, "cannot allocate more memory!");
   }
 
+  // Search for special characters
+  char *pinit = init_ptr(BUFF_LEN, init);
+  char *pch = strchr(pinit, '#');
+
   for(uint64_t a = 0; a < A; a++){
     if(pch)
       sprintf(pch, "%lu", a);
     ptr[a] = init_ptr(B, pinit);
   }
+  delete [] pinit;
+  delete [] pch;
 
   return ptr;
 }
@@ -875,18 +889,25 @@ void post_prob(double *pp, double *lkl, double *prior, uint64_t n_geno){
 // Calculate HWE genotype frequencies
 // MAF and F in normal-space
 // Genotype frequencies in log-space
-void calc_HWE(double *genot_freq, double freq, double F){
-  genot_freq[0] = log(pow(1-freq,2)   +   (1-freq)*freq*F);
-  genot_freq[1] = log(2*(1-freq)*freq - 2*(1-freq)*freq*F);
-  genot_freq[2] = log(pow(freq,2)     +   (1-freq)*freq*F);
+void calc_HWE(double *genot_freq, double freq, double F, bool log_scale){
+  genot_freq[0] = pow(1-freq,2)   +   (1-freq)*freq*F;
+  genot_freq[1] = 2*(1-freq)*freq - 2*(1-freq)*freq*F;
+  genot_freq[2] = pow(freq,2)     +   (1-freq)*freq*F;
+
+  if(log_scale)
+    conv_space(genot_freq, N_GENO, log);
 
   /* Added to avoid impossible cases (like HET on an IBD position). This way, 
      the prior for an HET is not 0 and these cases can still be calculated. 
      We could set the PP to missing (e.g. 0.3,0.3,0.3) but the IBD status is being 
      optimized so it is probably better to keep the information and give preference to the GL.
   */
-  if(F == 1)
-    genot_freq[1] = -INF;
+  if(F == 1){
+    if(log_scale)
+      genot_freq[1] = -INF;
+    else
+      genot_freq[1] = 1/INF;
+  }
 }
 
 

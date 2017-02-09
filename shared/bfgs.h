@@ -1,3 +1,8 @@
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wunused-label"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+
 /*
   mod by thorfinn@binf.ku.dk 7 nov 2011.
 
