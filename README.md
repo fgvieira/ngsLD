@@ -58,6 +58,9 @@ As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 
 
 It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
+### Output
+`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated as: site1 label, site2 label, distance between sites (bp), r^2 from pearson correlation between expected genotypes, D from EM algorithm, D' from EM algorithm, and r^2 from EM algorithm.
+
 ### Possible analyses
 `LD prunning` - For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts\prune_graph.pl` to prune your dataset and only keep unlinked sites.
 
