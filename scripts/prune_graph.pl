@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 #
 # Cared for by Filipe G. Vieira <>
 #
@@ -10,7 +10,7 @@
 
 =head1 NAME
 
-    prune_graph.pl v1.0.7
+    prune_graph.pl v1.0.8
 
 =head1 SYNOPSIS
 
@@ -106,13 +106,13 @@ while(<$FILE>){
     $graph->add_node($interact[0]) if(!$subset_file || defined($subset{$interact[0]}));
     $graph->add_node($interact[1]) if(!$subset_file || defined($subset{$interact[1]}));
 
-    # Skip SNP if distance more than $max_dist
-    next if( defined($interact[2]) && $interact[2] >= $max_dist );
-    # Skip SNP if weight less than $min_weight
-    next if( defined($interact[$weight_field-1]) && $interact[$weight_field-1] <= $min_weight );
     # Skip if NaN, +Inf, -Inf, ...
     my $x = Math::BigInt->new($interact[$weight_field-1]);
     next if($x->is_nan() || $x->is_inf('+') || $x->is_inf('-'));
+    # Skip SNP if distance more than $max_dist
+    next if( defined($interact[2]) && $interact[2] >= $max_dist );
+    # Skip SNP if weight less than $min_weight
+    next if( defined($interact[$weight_field-1]) && abs($interact[$weight_field-1]) <= $min_weight );
     # Skip if not on the subset file
     next unless( !$subset_file || (defined($subset{$interact[0]}) &&  defined($subset{$interact[1]})) );
 

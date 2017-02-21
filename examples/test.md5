@@ -6,6 +6,7 @@ d550455f9ecf04f85d17a584b500c42c  testLD_32.ld
 5cb2985d0496b5b66166d890d22dc5c5  testLD_8-CG.ld
 ed99ae4f0cfb41bc6a02baa42898e3bf  testLD_8.ld
 bfa9f99108cfb5cd7d7ff4dd2d0b3169  testLD.pos
+a7238568bd8c35be43d96cb29e4cfe51  testLD_pruned.id
 cf0540b8d71e5b253cf0631d54b8b5c5  testLD_T.ld
 f408b479b0662bc01365cb036852f9fe  testLD_Tr.ld
-d41d8cd98f00b204e9800998ecf8427e  testLD_unlinked.id
+2a2af9b204daaa1f15e42a2bf512e018  testLD_unlinked.id
