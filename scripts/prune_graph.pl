@@ -10,7 +10,7 @@
 
 =head1 NAME
 
-    prune_graph.pl v1.0.8
+    prune_graph.pl v1.0.9
 
 =head1 SYNOPSIS
 
@@ -179,16 +179,17 @@ if(0){
 }
 
 
-if($print_excl) {
+if($print_excl){
     # Open file to store EXCLUDED nodes
-    open(EXCL, ">".$print_excl) || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
-    #my $EXCL = new IO::Zlib;
-    #$EXCL->open($print_excl, (substr($print_excl, -3) eq '.gz' ? "wb9" : "wT")) || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
-    # Print EXCL nodes
-    print(EXCL $_."\n") for(@excl);
-    # Close file-handle for 
-    close(EXCL);
-    #$EXCL->close;
+    if(substr($print_excl, -3) eq '.gz'){
+	my $EXCL = IO::Zlib->new($print_excl, "wb9") || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
+	print($EXCL $_."\n") for(@excl);
+	$EXCL->close;
+    }else{
+	open(EXCL, ">".$print_excl) || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
+	print(EXCL $_."\n") for(@excl);
+	close(EXCL);
+    }
 }
 
 
