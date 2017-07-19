@@ -737,7 +737,6 @@ char **init_ptr(uint64_t A, uint64_t B, const char *init){
     ptr[a] = init_ptr(B, pinit);
   }
   delete [] pinit;
-  delete [] pch;
 
   return ptr;
 }
@@ -963,8 +962,6 @@ double est_maf(uint64_t n_ind, double **pdg, double *indF){
 
 
 
-// Adapted from BCFTOOLS:
-// https://github.com/lh3/samtools/blob/6bbe1609e10f27796e5bf29ac3207bb2e35ceac8/bcftools/em.c#L266-L310
 // Calculates LD directly from GLs by getting ML estimates (through an EM) of the four haplotype frequencies
 void bcf_pair_LD (double LD[3], double **s1, double **s2, double maf1, double maf2, uint64_t n_ind, bool log_scale)
 {
@@ -997,7 +994,17 @@ void bcf_pair_LD (double LD[3], double **s1, double **s2, double maf1, double ma
 
 
 
-// Get ML estimate of haplotype frequencies
+// Adapted from BCFTOOLS: https://github.com/lh3/samtools/blob/6bbe1609e10f27796e5bf29ac3207bb2e35ceac8/bcftools/em.c#L266-L310
+// EM to obtain the ML estimate of haplotype frequencies
+/*
+  hap_freq - array to store haplotype frequencies
+  gl1 - GLs for site1 for all "n" individuals
+  gl2 - GLs for site2 for all "n" individuals
+  maf1 - minor allele frequency at site1
+  maf2 - minor allele frequency at site2
+  n_ind - number of individuals
+  log_scale - are GLs in log scale?
+*/
 int haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1, double maf2, uint64_t n_ind, bool log_scale){
   double hap_freq_last[4];
 
@@ -1033,7 +1040,15 @@ int haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1, doub
 
 
 
-// Function to estimate haplotype frequencies from GLs (all in normal scale)
+// Adapted from BCFTOOLS: https://github.com/lh3/samtools/blob/6bbe1609e10f27796e5bf29ac3207bb2e35ceac8/bcftools/em.c#L242-L264
+// Function to estimate haplotype frequencies from GLs between two sites in normal scale
+/*
+  f - previous estimate of the 4 possible haplotype frequencies (in normal scale)
+  s1 - GLs (in normal scale) for site1 for all "n" individuals
+  s2 - GLs (in normal scale) for site2 for all "n" individuals
+  n - number of individuals
+*/
+
 #define _G1(h, k) ((h>>1&1) + (k>>1&1))
 #define _G2(h, k) ((h&1) + (k&1))
 
@@ -1073,6 +1088,15 @@ int pair_freq_iter(double f[4], double **s1, double **s2, uint64_t n)
 }
 
 
+
+// Adapted from BCFTOOLS: https://github.com/lh3/samtools/blob/6bbe1609e10f27796e5bf29ac3207bb2e35ceac8/bcftools/em.c#L242-L264
+// Function to estimate haplotype frequencies from GLs between two sites (just like pair_freq_iter) in log scale
+/*
+  f - previous estimate of the 4 possible haplotype frequencies (in normal scale)
+  s1 - GLs (in log scale) for site1 for all "n" individuals
+  s2 - GLs (in log scale) for site2 for all "n" individuals
+  n - number of individuals
+*/
 int pair_freq_iter_log(double f[4], double **s1, double **s2, uint64_t n)
 {
   double ff[4];
