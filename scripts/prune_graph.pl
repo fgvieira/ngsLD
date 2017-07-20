@@ -10,7 +10,7 @@
 
 =head1 NAME
 
-    prune_graph.pl v1.0.10
+    prune_graph.pl v1.0.11
 
 =head1 SYNOPSIS
 
@@ -22,6 +22,7 @@
     --min_weight    = Minimum weight to consider an edge (in --weight_field)
     --weight_field  = Which column from input file has the weight [4]
     --print_excl    = File to dump the name of excluded nodes
+    --use_weights   = Use the edge weights to calculate most connected node (number of connections by default)
     --out           = Path to output file [STDOUT]
 
 =head1 DESCRIPTION
@@ -57,7 +58,7 @@ use Graph::Easy;
 use Math::BigFloat;
 use IO::Zlib;
 
-my ($in_file, $subset_file, $max_dist, $min_weight, $weight_field, $print_excl, $out_file, $debug);
+my ($in_file, $subset_file, $max_dist, $min_weight, $weight_field, $print_excl, $use_weights, $out_file, $debug);
 my ($cnt, $graph, @excl, %subset);
 
 $in_file = '-';
@@ -76,6 +77,7 @@ GetOptions('h|help'             => sub { exec('perldoc',$0); exit; },
            'r|min_weight:s'     => \$min_weight,
            'f|weight_field:s'   => \$weight_field,
 	   'x|print_excl:s'     => \$print_excl,
+	   'use_weights!'       => \$use_weights,
 	   'o|out:s'            => \$out_file,
 	   'debug!'             => \$debug,
     );
@@ -106,15 +108,20 @@ while(<$FILE>){
     $graph->add_node($interact[0]) if(!$subset_file || defined($subset{$interact[0]}));
     $graph->add_node($interact[1]) if(!$subset_file || defined($subset{$interact[1]}));
 
+    # Use the absolute weight value
+    $interact[$weight_field-1] = abs($interact[$weight_field-1]);
     # Skip if NaN, +Inf, -Inf, ...
     my $x = Math::BigFloat->new($interact[$weight_field-1]);
     next if($x->is_nan() || $x->is_inf('+') || $x->is_inf('-'));
     # Skip SNP if distance more than $max_dist
     next if( defined($interact[2]) && $interact[2] >= $max_dist );
     # Skip SNP if weight less than $min_weight
-    next if( defined($interact[$weight_field-1]) && abs($interact[$weight_field-1]) <= $min_weight );
+    next if( defined($interact[$weight_field-1]) && $interact[$weight_field-1] <= $min_weight );
     # Skip if not on the subset file
     next unless( !$subset_file || (defined($subset{$interact[0]}) &&  defined($subset{$interact[1]})) );
+
+    # Use weights or just the number of connections?
+    $interact[$weight_field-1] = 1 if(!$use_weights);
 
     # Check if edge already exists
     my $edge;
@@ -123,6 +130,7 @@ while(<$FILE>){
 
 	my $weight = $edge->label;
 	print(STDERR "### Edge between nodes ".$interact[0]." and ".$interact[1]." already exists with weight = ".$weight.".\n");
+
 	# Check 'dist' attribute
 	my $dist = $edge->get_attribute('comment');
 	die("ERROR: distance between nodes ".$interact[0]." and ".$interact[1]." is not consistent across records (".$interact[2]." != ".$dist.")!") if($interact[2] != $dist);
