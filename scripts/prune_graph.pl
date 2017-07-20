@@ -10,7 +10,7 @@
 
 =head1 NAME
 
-    prune_graph.pl v1.0.9
+    prune_graph.pl v1.0.10
 
 =head1 SYNOPSIS
 
@@ -54,7 +54,7 @@
 use strict;
 use Getopt::Long;
 use Graph::Easy;
-use Math::BigInt;
+use Math::BigFloat;
 use IO::Zlib;
 
 my ($in_file, $subset_file, $max_dist, $min_weight, $weight_field, $print_excl, $out_file, $debug);
@@ -107,7 +107,7 @@ while(<$FILE>){
     $graph->add_node($interact[1]) if(!$subset_file || defined($subset{$interact[1]}));
 
     # Skip if NaN, +Inf, -Inf, ...
-    my $x = Math::BigInt->new($interact[$weight_field-1]);
+    my $x = Math::BigFloat->new($interact[$weight_field-1]);
     next if($x->is_nan() || $x->is_inf('+') || $x->is_inf('-'));
     # Skip SNP if distance more than $max_dist
     next if( defined($interact[2]) && $interact[2] >= $max_dist );
