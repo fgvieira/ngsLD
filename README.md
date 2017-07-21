@@ -71,7 +71,7 @@ For some analyses, linked sites are typically pruned since their presence can bi
 * `--in_file FILE`: File with input network [STDIN]
 * `--subset FILE`: File with node IDs to include (one per line)
 * `--max_dist INT`: Maximum distance between nodes (input file 3rd column) to assume they are connected
-* `--min_weight FLOAT`: Minimum weight (in --weight_field) of an edge to assume nodes are connected
+* `--min_weight FLOAT`: Minimum weight (in `--weight_field`) of an edge to assume nodes are connected
 * `--weight_field INT`: Column from input file with weights [4]
 * `--weight_type CHAR`: How to calculate most connected node: (n)umber of connections [default], sum of (e)dges' weight, or sum of (a)bsolute edges' weight
 * `--remove_heavy`: Remove 'heaviest' nodes, instead of keeping them [default]
@@ -80,7 +80,7 @@ For some analyses, linked sites are typically pruned since their presence can bi
 
 
 ##### LD decay
-You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\Fit_Exp.py` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't need all comparisons. The script utilizes the python package `lmfit` (Newville et al., 2016) to run a non-linear least-squares minimisation to fit the model ![model](http://mathurl.com/y79yw88u.png) to the data; it estimates the coefficients of the exponential decay equation and the Akaike Information Criterion (AIC) for each data set.
+You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\Fit_Exp.py` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't need all comparisons. The script utilizes the python package `lmfit` ([Newville et al., 2016](https://zenodo.org/record/11813)) to run a non-linear least-squares minimisation to fit the model ![model](http://mathurl.com/y79yw88u.png) to the data; it estimates the coefficients of the exponential decay equation and the Akaike Information Criterion (AIC) for each data set.
 
     % python Fit_Exp.py --input_type FOLDER --input_name /ngsLD/data/folder/ --data_type r2GLS --plot
 
