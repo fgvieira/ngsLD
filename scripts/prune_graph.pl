@@ -19,11 +19,11 @@
     --in_file       = File with input network [STDIN]
     --subset        = File with node IDs to include (one per line)
     --max_dist      = Maximum distance between nodes (input file 3rd column) to assume they are connected
-    --min_weight    = Minimum weight to consider an edge (in --weight_field)
-    --weight_field  = Which column from input file has the weight [4]
+    --min_weight    = Minimum weight (in --weight_field) of an edge to assume nodes are connected
+    --weight_field  = Column from input file with weights [4]
     --weight_type   = How to calculate most connected node: (n)umber of connections [default], sum of (e)dges' weight, or sum of (a)bsolute edges' weight
     --remove_heavy  = Remove 'heaviest' nodes, instead of keeping them [default]
-    --print_excl    = File to dump the name of excluded nodes
+    --print_excl    = File to dump excluded nodes
     --out           = Path to output file [STDOUT]
 
 =head1 DESCRIPTION
