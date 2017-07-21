@@ -31,13 +31,13 @@ $ANGSD/angsd -glf $SIM_DATA/testA.glf.gz -fai $SIM_DATA/testAF.ANC.fas.fai -nInd
 ../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_8.geno.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --call_geno --N_thresh 0.3 --call_thresh 0.9 | sort -k 1,1V -k 2,2V > testLD_8-CGf.ld
 
 # LD prunning
-../scripts/prune_graph.pl --i testLD_8.ld --max_dist 5000 --min_weight 0.5 --weight_field 6 --print_excl testLD_pruned.id | sort -k 1,1V > testLD_unlinked.id
+../scripts/prune_graph.pl --in_file testLD_8.ld --max_dist 5000 --min_weight 0.5 --weight_field 6 --print_excl testLD_pruned.id | sort -k 1,1V > testLD_unlinked.id
 
 
 
 ##### Check MD5
 rm -f *.arg
-TMP=`mktemp`
+TMP=`mktemp --suffix .ngsLD`
 md5sum testLD* | fgrep -v '.gz' | sort -k 2,2 > $TMP
 if diff $TMP test.md5 > /dev/null
 then
