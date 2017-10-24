@@ -89,7 +89,7 @@ int main (int argc, char** argv) {
   // Read data from GENO file
   if(pars->verbose >= 1)
     fprintf(stderr, "> Reading data from file...\n");
-  double ***tmp = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, pars->in_logscale, pars->n_ind, pars->n_sites);
+  double ***tmp = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, &pars->in_logscale, pars->n_ind, pars->n_sites);
   pars->geno_lkl = transp_matrix(tmp, pars->n_ind, pars->n_sites+1);
   free_ptr((void**) tmp, pars->n_ind);
 
@@ -99,7 +99,7 @@ int main (int argc, char** argv) {
       fprintf(stderr, "> Calling genotypes...\n");
     for(uint64_t i = 0; i < pars->n_ind; i++)
       for(uint64_t s = 1; s <= pars->n_sites; s++)
-	call_geno(pars->geno_lkl[s][i], N_GENO);
+	call_geno(pars->geno_lkl[s][i], N_GENO, pars->in_logscale, pars->N_thresh, pars->call_thresh, 0);
   }
 
   // Calculate MAF

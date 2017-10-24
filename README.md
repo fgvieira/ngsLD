@@ -55,7 +55,7 @@ Executables are built into the main directory. If you wish to clean all binaries
 
 ### Input data
 As input, `ngsLD` accepts both genotypes, genotype likelihoods (GP) or genotype posterior probabilities (GP). Genotypes must be input as gziped TSV with one row per site and one column per individual ![n_sites.n_ind](http://mathurl.com/ycxtfy8u.png) and genotypes coded as [-1, 0, 1, 2].
-As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 columns per individual ![3.n_sites.n_ind](http://mathurl.com/ycvy5fvx.png) and, in the case of binary, the GL/GP coded as doubles
+As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 columns per individual ![3.n_sites.n_ind](http://mathurl.com/ycvy5fvx.png) and, in the case of binary, the GL/GP coded as doubles.
 
 It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
@@ -63,7 +63,7 @@ It is advisable that SNPs be called first, since monomorphic sites are not infor
 `ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://mathurl.com/ya2uo8sp.png) from pearson correlation between expected genotypes, ![D](http://mathurl.com/y8cesmet.png) from EM algorithm, ![D'](http://mathurl.com/y8mgegb8.png) from EM algorithm, and ![r^2](http://mathurl.com/ya2uo8sp.png) from EM algorithm).
 
 ### Possible analyses
-##### LD prunning
+##### LD pruning
 For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts\prune_graph.pl` to prune your dataset and only keep unlinked sites.
 
     % perl --in_file testLD_8.ld --max_dist 5000 --min_weight 0.5 --weight_field 6 --print_excl testLD_pruned.id > testLD_unlinked.id

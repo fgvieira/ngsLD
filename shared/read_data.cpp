@@ -1,8 +1,16 @@
 
 #include "read_data.hpp"
 
-// Reads both called genotypes (1 field per site and indiv), genotype lkls or genotype post probs (3 fields per site and indiv)
-double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool in_logscale, uint64_t n_ind, uint64_t n_sites){
+/*
+Function to read both called genotypes (1 field per site and indiv), genotype lkls or genotype post probs (3 fields per site and indiv)
+  in_geno           : file name to read from
+  in_bin            : is input file in binary?
+  in_probs          : is input GLs or genot posterior probs?
+  in_logscale       : are the probs in log scale? (is updated to true at the end because function always returns genotypes in logscale)
+  n_ind             : number of individuals
+  n_sites           : number of sites
+*/
+double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool *in_logscale, uint64_t n_ind, uint64_t n_sites){
   uint64_t n_fields;
   // Depending on input we will have either 1 or 3 genot
   uint64_t n_geno = (in_probs ? N_GENO : 1);
@@ -22,7 +30,7 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool in_logscale,
       for(uint64_t i = 0; i < n_ind; i++){
 	if( gzread(in_geno_fh, geno[i][s], N_GENO * sizeof(double)) != N_GENO * sizeof(double) )
 	  error(__FUNCTION__, "cannot read binary GENO file. Check GENO file and number of sites!");
-	if(!in_logscale)
+	if(!*in_logscale)
 	  conv_space(geno[i][s], N_GENO, log);
 	// Normalize GL
 	post_prob(geno[i][s], geno[i][s], NULL, N_GENO);
@@ -64,7 +72,7 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool in_logscale,
       for(uint64_t i = 0; i < n_ind; i++){
 	if(in_probs){
           for(uint64_t g = 0; g < N_GENO; g++)
-            geno[i][s][g] = (in_logscale ? ptr[i*N_GENO+g] : log(ptr[i*N_GENO+g]));
+            geno[i][s][g] = (*in_logscale ? ptr[i*N_GENO+g] : log(ptr[i*N_GENO+g]));
 	}else{
 	  int g = (int) ptr[i];
 	  if(g >= 0){
@@ -91,6 +99,8 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool in_logscale,
 
   gzclose(in_geno_fh);
   delete [] buf;
+  // Read_geno always returns genos in logscale
+  *in_logscale = true;
   return geno;
 }
 

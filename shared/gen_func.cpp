@@ -826,9 +826,9 @@ bool miss_data(double *geno){
       n_geno            : number of genotypes in array
       log_scale         : are the probs in log scale?
       N_prob_thresh     : minimum prob to use data.
-                          If max prob is lower, data set as missing
+                          If highest prob is lower, data set as missing
       call_prob_thresh  : minimum prob to call a genotype. 
-                          If max prob is lower, leave geno as probs
+                          If highest prob is lower, leave geno as probs
       miss_data         : how the missing data is handled
           0 = missing data (all genot with equal prob)
 	  1 = sample random genotype
@@ -1063,16 +1063,18 @@ int pair_freq_iter(double f[4], double **s1, double **s2, uint64_t n)
     double *p[2], sum, tmp;
     p[0] = s1[i];
     p[1] = s2[i];
+
     sum = 0;
-    for (k = 0, sum = 0.; k < 4; ++k)
+    for (k = 0; k < 4; ++k)
       for (h = 0; h < 4; ++h)
 	sum += f[k] * f[h] * p[0][_G1(k,h)] * p[1][_G2(k,h)];
+
     for (k = 0; k < 4; ++k) {
-      tmp = f[0] * (p[0][_G1(0,k)] * p[1][_G2(0,k)] + p[0][_G1(k,0)] * p[1][_G2(k,0)])
-	+ f[1] * (p[0][_G1(1,k)] * p[1][_G2(1,k)] + p[0][_G1(k,1)] * p[1][_G2(k,1)])
-	+ f[2] * (p[0][_G1(2,k)] * p[1][_G2(2,k)] + p[0][_G1(k,2)] * p[1][_G2(k,2)])
-	+ f[3] * (p[0][_G1(3,k)] * p[1][_G2(3,k)] + p[0][_G1(k,3)] * p[1][_G2(k,3)]);
-      ff[k] += f[k] * tmp / sum;
+      tmp = 0;
+      for (h = 0; h < 4; ++h)
+	tmp += f[k] * f[h] * (p[0][_G1(h,k)] * p[1][_G2(h,k)] + p[0][_G1(k,h)] * p[1][_G2(k,h)]);
+
+      ff[k] += tmp / sum;
     }
   }
 
