@@ -30,7 +30,7 @@ typedef struct {
   bool version;
   uint verbose;
 
-  double ***geno_lkl;     // n_ind * n_sites+1 * N_GENO
+  double ***geno_lkl;     // n_sites+1 * n_ind * N_GENO
   double *maf;            // n_sites+1
   char **labels;          // n_sites+1
   double *pos_dist;       // n_sites+1
