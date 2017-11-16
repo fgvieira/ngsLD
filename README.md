@@ -31,7 +31,7 @@ Executables are built into the main directory. If you wish to clean all binaries
 
 ### Usage
 
-    % ./ngsLD [options] --geno glf/in/file --n_ind INT --n_sites INT --out_prefix output/file
+    % ./ngsLD [options] --geno glf/in/file --n_ind INT --n_sites INT --out output/file
 
 #### Parameters
 * `--geno FILE`: input file with genotypes, genotype likelihoods or genotype posterior probabilities.
@@ -39,7 +39,7 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--log_scale`: is the input in log-scale?
 * `--n_ind INT`: sample size (number of individuals).
 * `--n_sites INT`: total number of sites.
-* `--pos` FILE: input file with site coordinates.
+* `--pos` FILE: input file with site coordinates (one per line), where the 1st column stands for the chromosome/contig and the 2nd for the position (bp); remaining columns will be ignored but included in output.
 * `--max_kb_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. If set to 0 (zero) will perform all comparisons. [100]
 * `--max_snp_dist INT`: maximum distance between SNPs (in number of SNPs) to calculate LD. If set to 0 (zero) will perform all comparisons. [0]
 * `--min_maf DOUBLE`: minimum SNP minor allele frequency. [0.001]
@@ -80,15 +80,14 @@ For some analyses, linked sites are typically pruned since their presence can bi
 
 
 ##### LD decay
-You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\Fit_Exp.py` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't need all comparisons. The script utilizes the python package `lmfit` ([Newville et al., 2016](https://zenodo.org/record/11813)) to run a non-linear least-squares minimisation to fit the model ![model](http://mathurl.com/y79yw88u.png) to the data; it estimates the coefficients of the exponential decay equation and the Akaike Information Criterion (AIC) for each data set.
+You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\fit_LDdecay.R` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't need all comparisons. The script uses the R function `optim` to fit the model ![model](http://mathurl.com/y7h3vg2r.png) to the data (where ![alpha](http://mathurl.com/yd5qon57.png) is the population scaled recombination rate and ![d](http://mathurl.com/y8tj6z7g.png) the distance between sites).
 
-    % python Fit_Exp.py --input_type FOLDER --input_name /ngsLD/data/folder/ --data_type r2GLS --plot
+    % Rscript --vanilla --slave scripts/fit_LDdecay.R --ld_files path/to/ld_files.list --out plot.pdf
 
-* `--input_type STRING`: FILE or FOLDER
-* `--input_name FILE`: Path to FILE or FOLDER to analyse
-* `--data_type STRING`: Measue of LD to analyse: r2Pear (squared pearson correlation from expected genotypes), r2GLS (![r^2](http://mathurl.com/ya2uo8sp.png) from genotype likelihoods), D, and DPrime.
-* `--rnd_sample FLOAT`: Randomly subsample input data before fitting (useful for very large datasets).
-* `--plot`: Use an additional R script to generate a plot of each data set with the fit curve overlaid. 
+* `--ld_files FILE`: file with list of LD files to fit and plot (if ommited, can be read from STDIN)
+* `--out`: Name of output plot
+
+For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`)
 
 ### Thread pool
 The thread pool	implementation was adapted from Mathias Brossard's and is freely available from:
