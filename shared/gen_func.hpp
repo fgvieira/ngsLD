@@ -96,6 +96,6 @@ double est_maf(uint64_t, double**, double);
 double est_maf(uint64_t, double**, double*);
 
 void bcf_pair_LD (double*, double**, double**, double, double, uint64_t, bool = true);
-int haplo_freq(double*, double**, double**, double, double, uint64_t, bool = true);
+uint64_t haplo_freq(double*, double**, double**, double, double, uint64_t, bool = true);
 int pair_freq_iter(double*, double**, double**, uint64_t);
 int pair_freq_iter_log(double*, double**, double**, uint64_t);

@@ -19,6 +19,7 @@ void init_pars(params *pars) {
   pars->call_thresh = 0;
   pars->rnd_sample = 1;
   pars->seed = time(NULL) + rand() % 1000;
+  pars->extend_out = false;
   pars->out = NULL;
   pars->out_fh = stdout;
   pars->n_threads = 1;
@@ -46,15 +47,16 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
       {"call_thresh", required_argument, NULL, 'C'},
       {"rnd_sample", required_argument, NULL, 'r'},
       {"seed", required_argument, NULL, 'S'},
+      {"extend_out", no_argument, NULL, 'x'},
       {"out", required_argument, NULL, 'o'},
-      {"n_threads", required_argument, NULL, 'x'},
+      {"n_threads", required_argument, NULL, 't'},
       {"version", no_argument, NULL, 'v'},
       {"verbose", required_argument, NULL, 'V'},
       {0, 0, 0, 0}
     };
   
   int c = 0;
-  while ( (c = getopt_long_only(argc, argv, "g:pln:s:Z:d:D:f:cN:C:r:S:o:x:vV:", long_options, NULL)) != -1 )
+  while ( (c = getopt_long_only(argc, argv, "g:pln:s:Z:d:D:f:cN:C:r:S:xo:t:vV:", long_options, NULL)) != -1 )
     switch (c) {
     case 'g':
       pars->in_geno = optarg;
@@ -101,10 +103,13 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
     case 'S':
       pars->seed = atoi(optarg);
       break;
+    case 'x':
+      pars->extend_out = true;
+      break;
     case 'o':
       pars->out = optarg;
       break;
-    case 'x':
+    case 't':
       pars->n_threads = atoi(optarg);
       break;
     case 'v':
@@ -120,7 +125,7 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
 
   if(pars->verbose >= 1) {
     fprintf(stderr, "==> Input Arguments:\n");
-    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s\n\tmax_kb_dist (kb): %lu\n\tmax_snp_dist: %lu\n\tmin_maf: %f\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\trnd_sample: %f\n\tseed: %lu\n\tout: %s\n\tn_threads: %d\n\tversion: %s\n\tverbose: %d\n\n",
+    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s\n\tmax_kb_dist (kb): %lu\n\tmax_snp_dist: %lu\n\tmin_maf: %f\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\trnd_sample: %f\n\tseed: %lu\n\textend_out: %s\n\tout: %s\n\tn_threads: %d\n\tversion: %s\n\tverbose: %d\n\n",
 	    pars->in_geno,
 	    pars->in_probs ? "true":"false",
 	    pars->in_logscale ? "true":"false",
@@ -135,6 +140,7 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
 	    pars->call_thresh,
 	    pars->rnd_sample,
 	    pars->seed,
+	    pars->extend_out ? "true":"false",
 	    pars->out,
 	    pars->n_threads,
 	    pars->version ? "true":"false",

@@ -237,8 +237,9 @@ void calc_pair_LD (void *pth){
   uint64_t s1 = p->site;
   uint64_t s2 = s1;
   double dist = 0;
-  double LD_GL[4];
-
+  double r2pear, D, Dp, r2;
+  double hap_freq[4];
+  static pthread_mutex_t printf_mutex;
 
   // Calc LD for pairs of SNPs < max_kb_dist
   while (s2 < p->pars->n_sites){
@@ -254,35 +255,71 @@ void calc_pair_LD (void *pth){
     // Stop if current SNP is greater than max_snp_dist
     if(p->pars->max_snp_dist > 0 && p->pars->max_snp_dist < s2 - s1)
       break;
-
+    // Stop if site 1 is < min_maf
+    if(p->pars->maf[s1] < p->pars->min_maf)
+      break;
+    // Skip if site 2 is < min_maf
+    if(p->pars->maf[s2] < p->pars->min_maf)
+      continue;
     // Random sampling
     if(draw_rnd(p->rnd_gen, 0, 1) > p->pars->rnd_sample)
       continue;
 
-    // If either site 1 or site 2 is monomorphic, set LD to "NAN"
-    if(p->pars->maf[s1] < p->pars->min_maf || p->pars->maf[s2] < p->pars->min_maf){
-      LD_GL[0] = LD_GL[1] = LD_GL[2] = LD_GL[3] = NAN;
-    }else{
-      // Calculate LD using bcftools algorithm
-      LD_GL[0] = pearson_r(p->pars->expected_geno[s1], p->pars->expected_geno[s2], p->pars->n_ind);
 
-      // Calculate LD using bcftools algorithm
-      bcf_pair_LD(LD_GL+1, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->maf[s1], p->pars->maf[s2], p->pars->n_ind, false);
-    }
 
-    // If sampling, also skip nan
-    if(p->pars->rnd_sample != 1 && isnan(LD_GL[0]))
-      continue;
+    // Calculate LD using expected genotypes
+    r2pear = pearson_r(p->pars->expected_geno[s1], p->pars->expected_geno[s2], p->pars->n_ind);
 
-    fprintf(p->pars->out_fh, "%s\t%s\t%.0f\t%f\t%f\t%f\t%f\n",
+    // Calculate LD from haplotype frequencies (estimated through an EM)
+    // Estimate haplotype frequencies
+    haplo_freq(hap_freq, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->maf[s1], p->pars->maf[s2], p->pars->n_ind, false);
+    // Allele frequencies
+    double maf[2];
+    maf[0] = 1 - (hap_freq[0] + hap_freq[1]);
+    maf[1] = 1 - (hap_freq[0] + hap_freq[2]);
+    // calculate r^2
+    D = hap_freq[0] * hap_freq[3] - hap_freq[1] * hap_freq[2]; // P_BA * P_ba - P_Ba * P_bA
+    // or
+    //D = hap_freq[0] - (1-maf[0]) * (1-maf[1]);               // P_BA - P_B * P_A
+    Dp = D / (D < 0 ? -min(maf[0]*maf[1], (1-maf[0])*(1-maf[1])) : min(maf[0]*(1-maf[1]), (1-maf[0])*maf[1]) );
+    r2 = pow(D / sqrt(maf[0] * maf[1] * (1-maf[0]) * (1-maf[1])), 2);
+
+
+
+    pthread_mutex_lock(&printf_mutex);
+    // Print standard output: Locus1, Locus2, distance, r2pear, D, D', r2
+    fprintf(p->pars->out_fh, "%s\t%s\t%.0f\t%f\t%f\t%f\t%f",
 	    p->pars->labels[s1-1],
 	    p->pars->labels[s2-1],
 	    dist,
-	    LD_GL[0],
-	    LD_GL[1],
-	    LD_GL[2],
-	    LD_GL[3]
+	    r2pear,
+	    D,
+	    Dp,
+	    r2
 	    );
+    if(p->pars->extend_out){
+      // Calculate chi2 (Abecassis et al. 2001)
+      float chi2 = 0;
+      float freq_A = hap_freq[0] + hap_freq[1];
+      float freq_B = hap_freq[0] + hap_freq[2];
+      float exp_hap_freq[4] = {freq_A*freq_B, freq_A*(1-freq_B), (1-freq_A)*freq_B, (1-freq_A)*(1-freq_B)};
+      for(int i = 0; i < 4; i++)
+	    chi2 += pow(hap_freq[i]-exp_hap_freq[i],2)/exp_hap_freq[i];
+
+      // Print extended output: sample_size, maf1, maf2, hap00, hap01, hap10, hap11, chi2, loglike, nIter
+      fprintf(p->pars->out_fh, "\t%lu\t%f\t%f\t%f\t%f\t%f\t%f\t%f",
+	      p->pars->n_ind,
+	      p->pars->maf[s1],
+	      p->pars->maf[s2],
+	      hap_freq[0],
+	      hap_freq[1],
+	      hap_freq[2],
+	      hap_freq[3],
+	      chi2
+	      );
+    }
+    fprintf(p->pars->out_fh, "\n");
+    pthread_mutex_unlock(&printf_mutex);
   }
 
   // Free memory

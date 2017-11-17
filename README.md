@@ -48,6 +48,7 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--call_thresh DOUBLE`: minimum threshold to call genotype; left as is if otherwise (assumes -call_geno).
 * `--rnd_sample DOUBLE`: proportion of comparisons to randomly sample. [1]
 * `--seed INT`: random number generator seed for random sampling (--rnd_sample).
+* `--extend_out`: print extended output (see below).
 * `--out FILE`: output file name. [stdout]
 * `--n_threads INT`: number of threads to use. [1]
 * `--version`: prints program version and exits.
@@ -60,7 +61,7 @@ As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 
 It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
 ### Output
-`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://mathurl.com/ya2uo8sp.png) from pearson correlation between expected genotypes, ![D](http://mathurl.com/y8cesmet.png) from EM algorithm, ![D'](http://mathurl.com/y8mgegb8.png) from EM algorithm, and ![r^2](http://mathurl.com/ya2uo8sp.png) from EM algorithm).
+`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://mathurl.com/ya2uo8sp.png) from pearson correlation between expected genotypes, ![D](http://mathurl.com/y8cesmet.png) from EM algorithm, ![D'](http://mathurl.com/y8mgegb8.png) from EM algorithm, and ![r^2](http://mathurl.com/ya2uo8sp.png) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Abecassis et al. 2001](https://www.sciencedirect.com/science/article/pii/S0002929707624835)).
 
 ### Possible analyses
 ##### LD pruning

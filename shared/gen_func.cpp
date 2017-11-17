@@ -961,39 +961,6 @@ double est_maf(uint64_t n_ind, double **pdg, double *indF){
 
 
 
-
-// Calculates LD directly from GLs by getting ML estimates (through an EM) of the four haplotype frequencies
-void bcf_pair_LD (double LD[3], double **s1, double **s2, double maf1, double maf2, uint64_t n_ind, bool log_scale)
-{
-  // Estimate haplotype frequencies
-  double hap_freq[4];
-  haplo_freq(hap_freq, s1, s2, maf1, maf2, n_ind, log_scale);
-
-  // Allele frequencies
-  double maf[2];
-  maf[0] = 1 - (hap_freq[0] + hap_freq[1]);
-  maf[1] = 1 - (hap_freq[0] + hap_freq[2]);
-
-  // calculate r^2
-  double r2, D, Dp;
-  D = hap_freq[0] * hap_freq[3] - hap_freq[1] * hap_freq[2]; // P_BA * P_ba - P_Ba * P_bA
-  // or
-  //D = hap_freq[0] - (1-maf[0]) * (1-maf[1]);               // P_BA - P_B * P_A
-  Dp = D / (D < 0 ? -min(maf[0]*maf[1], (1-maf[0])*(1-maf[1])) : min(maf[0]*(1-maf[1]), (1-maf[0])*maf[1]) );
-  r2 = pow(D / sqrt(maf[0] * maf[1] * (1-maf[0]) * (1-maf[1])), 2);
-
-  /*
-  if(isnan(r2))
-    r2 = -1.0;
-  */
-
-  LD[0] = D;
-  LD[1] = Dp;
-  LD[2] = r2;
-}
-
-
-
 // Adapted from BCFTOOLS: https://github.com/lh3/samtools/blob/6bbe1609e10f27796e5bf29ac3207bb2e35ceac8/bcftools/em.c#L266-L310
 // EM to obtain the ML estimate of haplotype frequencies
 /*
@@ -1005,11 +972,12 @@ void bcf_pair_LD (double LD[3], double **s1, double **s2, double maf1, double ma
   n_ind - number of individuals
   log_scale - are GLs in log scale?
 */
-int haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1, double maf2, uint64_t n_ind, bool log_scale){
+uint64_t haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1, double maf2, uint64_t n_ind, bool log_scale){
+  uint64_t i;
   double hap_freq_last[4];
 
   if(maf1 < 0 || maf1 > 1 || maf2 < 0 || maf2 > 1)
-    return -1;
+    error("__FUNCTION__", "invalid allele frequencies");
 
   // Initialize haplotype frequencies
   hap_freq[0] = (1 - maf1) * (1 - maf2); // P_BA
@@ -1018,7 +986,7 @@ int haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1, doub
   hap_freq[3] = maf1 * maf2;             // P_ba
 
   // iteration
-  for(uint64_t i = 0; i < ITER_MAX; i++) {
+  for(i = 0; i < ITER_MAX; i++) {
     double eps = 0;
     memcpy(hap_freq_last, hap_freq, 4 * sizeof(double));
     if(log_scale)
@@ -1035,7 +1003,7 @@ int haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1, doub
       break;
   }
 
-  return 0;
+  return i;
 }
 
 

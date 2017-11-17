@@ -24,6 +24,7 @@ typedef struct {
   double call_thresh;
   double rnd_sample;
   uint64_t seed;
+  bool extend_out;
   char *out;
   FILE *out_fh;
   uint n_threads;
