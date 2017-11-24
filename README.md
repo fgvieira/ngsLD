@@ -61,7 +61,7 @@ As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 
 It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
 ### Output
-`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://mathurl.com/ya2uo8sp.png) from pearson correlation between expected genotypes, ![D](http://mathurl.com/y8cesmet.png) from EM algorithm, ![D'](http://mathurl.com/y8mgegb8.png) from EM algorithm, and ![r^2](http://mathurl.com/ya2uo8sp.png) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Abecassis et al. 2001](https://www.sciencedirect.com/science/article/pii/S0002929707624835)).
+`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://mathurl.com/ya2uo8sp.png) from pearson correlation between expected genotypes, ![D](http://mathurl.com/y8cesmet.png) from EM algorithm, ![D'](http://mathurl.com/y8mgegb8.png) from EM algorithm, and ![r^2](http://mathurl.com/ya2uo8sp.png) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Collins et al. 1999](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC24792/)).
 
 ### Possible analyses
 ##### LD pruning
@@ -81,7 +81,7 @@ For some analyses, linked sites are typically pruned since their presence can bi
 
 
 ##### LD decay
-You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\fit_LDdecay.R` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't need all comparisons. The script uses the R function `optim` to fit the model ![model](http://mathurl.com/y7h3vg2r.png) to the data (where ![alpha](http://mathurl.com/yd5qon57.png) is the population scaled recombination rate and ![d](http://mathurl.com/y8tj6z7g.png) the distance between sites).
+You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\fit_LDdecay.R` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't need all comparisons. The script uses the R function `optim` to fit LD decay models for `r2` ([Hill and Weir 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al. 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and `D'` ([Abecassis et al. 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)).
 
     % Rscript --vanilla --slave scripts/fit_LDdecay.R --ld_files path/to/ld_files.list --out plot.pdf
 
