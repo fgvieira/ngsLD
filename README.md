@@ -90,7 +90,7 @@ If you are interested on the rate of LD decay, you can try to fit a distribution
 
 For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`)
 
-### 
+### Hints
 * `ngsLD` performance seems to drop considerable under extremely low coverages (<1x); consider these cases only if you have large sample sizes (>100 individuals)
 * For some analyses (e.g. LD decay) consider sampling your data (`--rnd_sample`), since `ngsLD` will be much faster and you might don't need all comparisons.
 * For the LD decay, as a rule-of-thumb, consider using at least 10'000 SNPs (and check the confidence interval)
