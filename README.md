@@ -61,7 +61,7 @@ As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 
 It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
 ### Output
-`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://mathurl.com/ya2uo8sp.png) from pearson correlation between expected genotypes, ![D](http://mathurl.com/y8cesmet.png) from EM algorithm, ![D'](http://mathurl.com/y8mgegb8.png) from EM algorithm, and ![r^2](http://mathurl.com/ya2uo8sp.png) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Collins et al. 1999](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC24792/)).
+`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://mathurl.com/ya2uo8sp.png) from pearson correlation between expected genotypes, ![D](http://mathurl.com/y8cesmet.png) from EM algorithm, ![D'](http://mathurl.com/y8mgegb8.png) from EM algorithm, and ![r^2](http://mathurl.com/ya2uo8sp.png) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Collins et al., 1999](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC24792/)).
 
 ### Possible analyses
 ##### LD pruning
@@ -81,7 +81,7 @@ For some analyses, linked sites are typically pruned since their presence can bi
 
 
 ##### LD decay
-You can also fit an exponential distribution to estimate the rate of LD decay. We provide the script `scripts\fit_LDdecay.R` but, for this type of analysis, `--rnd_sample` option should be used since `ngsLD` will be much faster and you don't need all comparisons. The script uses the R function `optim` to fit LD decay models for `r2` ([Hill and Weir 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al. 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and `D'` ([Abecassis et al. 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)).
+If you are interested on the rate of LD decay, you can try to fit a distribution to your data. We provide the script `scripts\fit_LDdecay.R` that uses the R function `optim` to fit LD decay models for `r2` ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and `D'` ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)).
 
     % Rscript --vanilla --slave scripts/fit_LDdecay.R --ld_files path/to/ld_files.list --out plot.pdf
 
@@ -89,6 +89,11 @@ You can also fit an exponential distribution to estimate the rate of LD decay. W
 * `--out`: Name of output plot
 
 For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`)
+
+### 
+* `ngsLD` performance seems to drop considerable under extremely low coverages (<1x); consider these cases only if you have large sample sizes (>100 individuals)
+* For some analyses (e.g. LD decay) consider sampling your data (`--rnd_sample`), since `ngsLD` will be much faster and you might don't need all comparisons.
+* For the LD decay, as a rule-of-thumb, consider using at least 10'000 SNPs (and check the confidence interval)
 
 ### Thread pool
 The thread pool	implementation was adapted from Mathias Brossard's and is freely available from:

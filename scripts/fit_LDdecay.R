@@ -29,8 +29,8 @@ option_list <- list(
   make_option(c('--plot_bin_size'), action='store', type='numeric', default=100, help='Size of bin to plot'),
   make_option(c('--plot_x_lim'), action='store', type='numeric', default=1e6, help='X-axis plot limit'),
   make_option(c('--plot_axis_scales'), action='store', type='character', default='fixed', help='Plot axis scales: fixed (default), free, free_x or free_y'),
-  make_option(c('--plot_size'), action='store', type='character', default='1,2', help='Plot size (height,width)'),
-  make_option(c('--plot_scale'), action='store', type='numeric', default=1, help='Plot scale'),
+  make_option(c('--plot_size'), action='store', type='character', default='1,1', help='Plot size (height,width)'),
+  make_option(c('--plot_scale'), action='store', type='numeric', default=2, help='Plot scale'),
   make_option(c('--plot_wrap'), action='store', type='numeric', default=0, help='Plot in WRAP with X columns (default in GRID)'),
   make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default='File ~ LD', help='Plot formula for WRAP'),
   make_option(c('-o','--out'), action='store', type='character', default=NULL, help='Output file'),
@@ -38,9 +38,6 @@ option_list <- list(
 )
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
-
-#opt$ld_files = "Desktop/TEST/in.tsv"; opt$ld = c("r2","Dp"); opt$header=TRUE; opt$col = 5; opt$plot_data = TRUE; opt$fit_boot = 10
-#opt$debug = TRUE
 
 # Parse input LD files
 if(is.null(opt$ld_files)) 
@@ -59,9 +56,9 @@ if(!all(opt$ld %in% c("r2pear", "D", "Dp", "r2")))
 n_ld = length(opt$ld)
 
 # Check max_dist parameter 
-if(opt$max_dist < 50 & "Dp" %in% opt$ld)
-  warn("Fitting of D' decay is highly unreliable at short distances (< 50kb).")
-  
+if(opt$max_dist < 50)
+  warning("Fitting of LD decay is highly unreliable at short distances (<50kb).")
+
 # If there is binning for the fit, plot that data (do not bin again)
 if(opt$fit_bin_size)
   opt$plot_bin_size = 0
@@ -170,9 +167,9 @@ fit_func <- function(x, fit_level) {
   optim_tmp[[1]]$par
 }
 
-# Get fitted values
+# Fit LD decay distribution
 if(opt$fit_level > 0) {
-  grid <- seq(1, opt$plot_x_lim, length = 1000)
+  grid <- seq(1, opt$plot_x_lim, length=1000)
   # Full data
   optim_fit <- ddply(ld_data, .(File,LD), fit_func, fit_level=opt$fit_level)
   if(opt$debug)
@@ -193,6 +190,8 @@ if(opt$fit_level > 0) {
   # Merge data together with exrta info from input
   fit_data <- merge(optim_data, ld_files)
 }
+# Print 
+print(optim_fit)
 if(opt$debug)
   print(head(fit_data))
 
@@ -234,7 +233,7 @@ if(length(opt$ld) > 0) {
 
 
 ### Save plot
-plot_height <- 2 * opt$plot_size[1] * n_plots
-plot_width <- 5 * opt$plot_size[2]
+plot_height <- opt$plot_size[1] * n_plots
+plot_width <- opt$plot_size[2] * n_groups
 ggsave(opt$out, plot=plot, height=plot_height, width=plot_width, scale=opt$plot_scale, limitsize=FALSE)
 x <- warnings()
