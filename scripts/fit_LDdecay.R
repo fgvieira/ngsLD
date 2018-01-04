@@ -20,16 +20,16 @@ option_list <- list(
   make_option(c('--header'), action='store_true', type='logical', default=FALSE, help='Input file has header'),
   make_option(c('--col'), action='store', type='numeric', default=3, help='Which column is distance between sites'),
   make_option(c('--ld'), action='store', type='character', default="r2", help='Which LD stats to plot (r2pear, D, Dp, r2)'),
-  make_option(c('--max_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis'),
+  make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis'),
   make_option(c('--fit_boot'), action='store', type='numeric', default=0, help='Number of bootstrap replicates for fitting CI'),
   make_option(c('--fit_bin_size'), action='store', type='numeric', default=0, help='Size of bin to fit'),
   make_option(c('--fit_level'), action='store', type='numeric', default=1, help='Fitting level 0) no fitting, best of 1) Nelder-Mead, 2) and BFGS, 3) and L-BFGS-B)'),
   make_option(c('--plot_group'), action='store', type='character', default='File', help='Group variable'),
   make_option(c('--plot_data'), action='store_true', type='logical', default=FALSE, help='Also plot data points?'),
   make_option(c('--plot_bin_size'), action='store', type='numeric', default=100, help='Size of bin to plot'),
-  make_option(c('--plot_x_lim'), action='store', type='numeric', default=1e6, help='X-axis plot limit'),
+  make_option(c('--plot_x_lim'), action='store', type='numeric', default=0, help='X-axis plot limit (in kb)'),
   make_option(c('--plot_axis_scales'), action='store', type='character', default='fixed', help='Plot axis scales: fixed (default), free, free_x or free_y'),
-  make_option(c('--plot_size'), action='store', type='character', default='1,1', help='Plot size (height,width)'),
+  make_option(c('--plot_size'), action='store', type='character', default='1,2', help='Plot size (height,width)'),
   make_option(c('--plot_scale'), action='store', type='numeric', default=2, help='Plot scale'),
   make_option(c('--plot_wrap'), action='store', type='numeric', default=0, help='Plot in WRAP with X columns (default in GRID)'),
   make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default='File ~ LD', help='Plot formula for WRAP'),
@@ -55,8 +55,8 @@ if(!all(opt$ld %in% c("r2pear", "D", "Dp", "r2")))
   error("Invalid LD measure to plot")
 n_ld = length(opt$ld)
 
-# Check max_dist parameter 
-if(opt$max_dist < 50)
+# Check max_kb_dist parameter 
+if(opt$max_kb_dist < 50)
   warning("Fitting of LD decay is highly unreliable at short distances (<50kb).")
 
 # If there is binning for the fit, plot that data (do not bin again)
@@ -91,7 +91,7 @@ for (i in 1:n_files) {
   colnames(tmp_data) <- header
   tmp_data <- tmp_data[, which(names(tmp_data) %in% c("Dist",opt$ld))]
   # Filter by minimum distance
-  tmp_data <- tmp_data[which(tmp_data$Dist < opt$max_dist*1000),]
+  tmp_data <- tmp_data[which(tmp_data$Dist < opt$max_kb_dist*1000),]
   # Bin data
   if(opt$fit_bin_size != 0) {
     tmp_data$Dist <- as.integer(tmp_data$Dist / opt$fit_bin_size) * opt$fit_bin_size + 1
@@ -102,6 +102,10 @@ for (i in 1:n_files) {
 }
 # Clean-up
 rm(tmp_data)
+# Set maximum X-axis
+opt$plot_x_lim = opt$plot_x_lim * 1000
+if(opt$plot_x_lim == 0)
+  opt$plot_x_lim = max(ld_data$Dist)
 # Add extra info
 ld_data <- merge(ld_data, ld_files, by="File")
 # 
@@ -217,7 +221,7 @@ if(opt$plot_data){
   # Bin data
   if(opt$plot_bin_size != 0) {
     ld_data$Dist <- as.integer(ld_data$Dist / opt$plot_bin_size) * opt$plot_bin_size
-    ld_data <- aggregate(value ~ ., data=ld_data, mean)
+    ld_data <- aggregate(value ~ ., data=ld_data, median)
   }
   # Add points
   plot <- plot + geom_point(data=ld_data, aes_string(x="Dist",y="value",colour=opt$plot_group), size=0.1, alpha=0.2)
@@ -229,6 +233,9 @@ if(length(opt$ld) > 0) {
   if(length(grp) == 0) grp <- NULL
   plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",group=opt$plot_group,colour=opt$plot_group,linetype=grp))
 }
+# Remove legend if plotting just a single variable
+if(n_groups < 2)
+  plot <- plot + theme(legend.position="none")
 
 
 
