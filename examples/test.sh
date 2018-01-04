@@ -18,20 +18,22 @@ zcat testLD_T.geno.gz | awk 'BEGIN{cnt=1} pos > 10000 {pos=0; cnt++} {pos+=int(r
 
 ##### Genotypes' likelihood and posterior probabilities
 # Binary, normal-scale
-$ANGSD/angsd -glf $SIM_DATA/testA.glf.gz -fai $SIM_DATA/testAF.ANC.fas.fai -nInd $N_IND -doMajorMinor 1 -doPost 1 -doMaf 1 -doGeno 32 -out testLD_32
-gunzip -f testLD_32.geno.gz
-../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_32.geno   --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out                                              | sort -k 1,1V -k 2,2V > testLD_32.ld
-../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_32.geno   --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno                                  | sort -k 1,1V -k 2,2V > testLD_32-CG.ld
-../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_32.geno   --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno --N_thresh 0.3 --call_thresh 0.9 | sort -k 1,1V -k 2,2V > testLD_32-CGf.ld
+$ANGSD/angsd -glf $SIM_DATA/testA.glf.gz -fai $SIM_DATA/testAF.ANC.fas.fai -nInd $N_IND -doMajorMinor 1 -doPost 1 -doMaf 1 -doGlf 3 -out testLD_3
+gunzip testLD_3.glf.gz
+rm testLD_3.glf.pos.gz
+../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_3.glf   --log_scale --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out                                              | sort -k 1,1V -k 2,2V > testLD_3.ld
+../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_3.glf   --log_scale --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno                                  | sort -k 1,1V -k 2,2V > testLD_3-CG.ld
+../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_3.glf   --log_scale --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno --N_thresh 0.3 --call_thresh 0.9 | sort -k 1,1V -k 2,2V > testLD_3-CGf.ld
 
 # Text, normal scale
-$ANGSD/angsd -glf $SIM_DATA/testA.glf.gz -fai $SIM_DATA/testAF.ANC.fas.fai -nInd $N_IND -doMajorMinor 1 -doPost 1 -doMaf 1 -doGeno 8 -out testLD_8
-../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_8.geno.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out                                              | sort -k 1,1V -k 2,2V > testLD_8.ld
-../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_8.geno.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno                                  | sort -k 1,1V -k 2,2V > testLD_8-CG.ld
-../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_8.geno.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno --N_thresh 0.3 --call_thresh 0.9 | sort -k 1,1V -k 2,2V > testLD_8-CGf.ld
+$ANGSD/angsd -glf $SIM_DATA/testA.glf.gz -fai $SIM_DATA/testAF.ANC.fas.fai -nInd $N_IND -doMajorMinor 1 -doPost 1 -doMaf 1 -doGlf 2 -out testLD_2
+../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_2.beagle.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out                                              | sort -k 1,1V -k 2,2V > testLD_2.ld
+../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_2.beagle.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno                                  | sort -k 1,1V -k 2,2V > testLD_2-CG.ld
+../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_2.beagle.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno --N_thresh 0.3 --call_thresh 0.9 | sort -k 1,1V -k 2,2V > testLD_2-CGf.ld
+gunzip testLD_2.beagle.gz
 
 # LD prunning
-../scripts/prune_graph.pl --in_file testLD_8.ld --max_dist 5000 --min_weight 0.5 --weight_field 6 --print_excl testLD_pruned.id | sort -k 1,1V > testLD_unlinked.id
+../scripts/prune_graph.pl --in_file testLD_2.ld --max_kb_dist 5 --field_weight 7 --min_weight 0.5 --print_excl testLD_pruned.id | sort -k 1,1V > testLD_unlinked.id
 
 
 
