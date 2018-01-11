@@ -22,7 +22,7 @@
     --max_kb_dist   = Maximum distance (in kb) between nodes (in `--field_dist` column) to assume they are connected
     --field_weight  = Column from input file with weights [7]
     --min_weight    = Minimum weight (in `--field_weight` column) of an edge to assume nodes are connected
-    --weight_type   = How to calculate most connected node: (n)umber of connections [default], sum of (e)dges' weight, or sum of (a)bsolute edges' weight
+    --weight_type   = How to calculate most connected node: sum of (a)bsolute edges' weight [default], sum of (e)dges' weight, or (n)umber of connections
     --keep_heavy    = Keep 'heaviest' nodes, instead of removing them (default)
     --print_excl    = File to dump excluded nodes
     --out           = Path to output file [STDOUT]
@@ -69,7 +69,7 @@ $field_dist = 3;
 $max_kb_dist = '+inf';
 $field_weight = 7;
 $min_weight = 0;
-$weight_type = 'n';
+$weight_type = 'a';
 $out_file = '-';
 $debug = 0;
 $cnt = 0;
