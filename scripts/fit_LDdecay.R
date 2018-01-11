@@ -110,11 +110,10 @@ if(opt$plot_x_lim == 0)
 ld_data <- merge(ld_data, ld_files, by="File")
 # 
 n_groups <- length(unique(ld_data[,opt$plot_group]))
-n_plots <- n_files / n_groups
-if(opt$debug) {
-  cat(n_files, n_groups, n_ld, n_plots, fill=TRUE)
+n_plots <- n_files * n_ld / n_groups
+if(opt$debug)
   print(head(ld_data))
-}
+
 
 
 ### Fit decay
@@ -187,7 +186,7 @@ if(opt$fit_level > 0) {
     }
     boot_fit <- as.data.frame(as.matrix(aggregate(cbind(V1,V2,V3) ~ File+LD, boot_rep_fit, quantile, probs=c(0.025,0.975), names=FALSE)), stringsAsFactors=FALSE)
     all_fit <- merge(optim_fit, boot_fit)
-    optim_data <- ddply(all_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"]), ci1=ld_exp(x[,c("V1.1","V2.1","V3.1")], grid, x[,"LD"]), ci2=ld_exp(x[,c("V1.2","V2.2","V3.2")], grid, x[,"LD"])) )
+    optim_data <- ddply(all_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"]), ci_l=ld_exp(x[,c("V1.1","V2.1","V3.2")], grid, x[,"LD"]), ci_u=ld_exp(x[,c("V1.2","V2.2","V3.1")], grid, x[,"LD"])) )
   } else {
     optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"])) )
   }
@@ -212,7 +211,7 @@ if(opt$plot_wrap) {
 }
 # Add LD decay fit CI
 if(opt$fit_boot > 0)
-  plot <- plot + geom_ribbon(data=fit_data, aes(x=Dist,ymin=ci1,ymax=ci2), alpha=0.2)
+  plot <- plot + geom_ribbon(data=fit_data, aes(x=Dist,ymin=ci_l,ymax=ci_u), alpha=0.2)
 # Add data points
 if(opt$plot_data){
   # Check format
@@ -224,14 +223,16 @@ if(opt$plot_data){
     ld_data <- aggregate(value ~ ., data=ld_data, median)
   }
   # Add points
-  plot <- plot + geom_point(data=ld_data, aes_string(x="Dist",y="value",colour=opt$plot_group), size=0.1, alpha=0.2)
+  plot <- plot + geom_point(data=ld_data, aes_string(x="Dist",y="value",colour=opt$plot_group), size=0.05, alpha=0.2)
 }
 # Add LD decay best fit
 if(length(opt$ld) > 0) {
   header <- colnames(fit_data)
-  grp <- header[!header %in% unique(c(as.character(opt$plot_wrap_formula), opt$plot_group, "Dist", "value", "File", "ci1", "ci2"))]
+  grp <- header[!header %in% unique(c(as.character(opt$plot_wrap_formula), opt$plot_group, "Dist", "value", "File", "ci_l", "ci_u"))]
   if(length(grp) == 0) grp <- NULL
   plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",group=opt$plot_group,colour=opt$plot_group,linetype=grp))
+  if(n_groups == 1 && opt$plot_data)
+    plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",group=opt$plot_group), size=0.1, alpha=0.2, colour="black")
 }
 # Remove legend if plotting just a single variable
 if(n_groups < 2)
@@ -239,8 +240,16 @@ if(n_groups < 2)
 
 
 
-### Save plot
-plot_height <- opt$plot_size[1] * n_plots
-plot_width <- opt$plot_size[2] * n_groups
+### Output plot
+n_plots <- length(unique(ggplot_build(plot)$data[[1]]$PANEL))
+par <- ggplot_build(plot)$layout$facet$params
+facet_dims <- wrap_dims(n_plots, par$nrow, par$ncol)
+if(opt$debug){
+  cat(n_files, n_ld, n_groups, n_plots, fill=TRUE)
+  cat(facet_dims[1], facet_dims[2], fill=TRUE)
+}
+# Save
+plot_height <- opt$plot_size[1] * facet_dims[2]
+plot_width <- opt$plot_size[2] * facet_dims[1]
 ggsave(opt$out, plot=plot, height=plot_height, width=plot_width, scale=opt$plot_scale, limitsize=FALSE)
 x <- warnings()
