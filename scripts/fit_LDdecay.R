@@ -29,9 +29,10 @@ option_list <- list(
   make_option(c('--plot_bin_size'), action='store', type='numeric', default=100, help='Size of bin to plot'),
   make_option(c('--plot_x_lim'), action='store', type='numeric', default=0, help='X-axis plot limit (in kb)'),
   make_option(c('--plot_axis_scales'), action='store', type='character', default='fixed', help='Plot axis scales: fixed (default), free, free_x or free_y'),
-  make_option(c('--plot_size'), action='store', type='character', default='1,2', help='Plot size (height,width)'),
-  make_option(c('--plot_scale'), action='store', type='numeric', default=2, help='Plot scale'),
+  make_option(c('--plot_size'), action='store', type='character', default='1,1', help='Plot size (height,width)'),
+  make_option(c('--plot_scale'), action='store', type='numeric', default=2.5, help='Plot scale'),
   make_option(c('--plot_wrap'), action='store', type='numeric', default=0, help='Plot in WRAP with X columns (default in GRID)'),
+  make_option(c('--plot_no_legend'), action='store_true', type='logical', default=FALSE, help='REmove legend from plot'),
   make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default='File ~ LD', help='Plot formula for WRAP'),
   make_option(c('-o','--out'), action='store', type='character', default=NULL, help='Output file'),
   make_option(c('--debug'), action='store_true', type='logical', default=FALSE, help='Debug mode. Extra output...')
@@ -44,6 +45,9 @@ if(is.null(opt$ld_files))
   opt$ld_files <- file('stdin')
 ld_files <- read.table(opt$ld_files, header=opt$header, stringsAsFactors=FALSE)
 colnames(ld_files)[1] <- "File"
+# Keep file list ordered
+for (id in colnames(ld_files))
+    ld_files[,id] <- factor(ld_files[,id], unique(ld_files[,id]), ordered=TRUE)
 n_files <- nrow(ld_files)
 if(opt$debug)
   print(ld_files)
@@ -107,7 +111,7 @@ opt$plot_x_lim = opt$plot_x_lim * 1000
 if(opt$plot_x_lim == 0)
   opt$plot_x_lim = max(ld_data$Dist)
 # Add extra info
-ld_data <- merge(ld_data, ld_files, by="File")
+ld_data <- merge(ld_files, ld_data, by="File", sort=FALSE)
 # 
 n_groups <- length(unique(ld_data[,opt$plot_group]))
 n_plots <- n_files * n_ld / n_groups
@@ -157,8 +161,9 @@ fit_func <- function(x, fit_level) {
     optim_tmp <- list("Brent" = optim(par$init, fit_eval, obs_data=x, method=c("Brent"), lower=par$low_lim, upper=par$up_lim))
     optim_tmp[[1]]$par <- c(optim_tmp[[1]]$par, 0, 0)
   }
-  if(opt$debug) lapply(optim_tmp, function(x){ cat(format(as.numeric(x$par),digits=4,nsmall=6,scientific=FALSE), format(as.numeric(x$value),digits=7,nsmall=4), x$counts, x$convergence, x$message, sep="\t", fill=TRUE) } )
+  if(opt$debug) lapply(optim_tmp, function(x){ cat(format(as.numeric(x$par),digits=4,nsmall=6,scientific=FALSE), format(as.numeric(x$value),digits=7,nsmall=4), x$counts, x$convergence, x$message, sep="\t", fill=TRUE) })
   # Filter out runs that not-converged and/or with out-of-bound parameters
+  # Columns stand for: par1, par2, par3, score, counts, convergence, message
   optim_tmp <- Filter(function(x){x$convergence == 0 &
                                   x$par[1] >= par$low_lim[1] & x$par[1] <= par$up_lim[1] & 
                                   (ld_stat != 'Dp' | x$par[2] >= par$low_lim[2] & x$par[2] <= par$up_lim[2] &
@@ -166,7 +171,7 @@ fit_func <- function(x, fit_level) {
   # Pick best run
   optim_tmp <- optim_tmp[order(sapply(optim_tmp,'[[',2))[1]]
   if(length(optim_tmp) != 1) stop("convergence analyses failed.")
-  if(opt$debug) cat("Best fit for ", x$File[1], " (",as.vector(ld_stat),"): ", names(optim_tmp), sep="", fill=TRUE)
+  if(opt$debug) cat("Best fit for ", as.character(x$File[1]), " (",as.vector(ld_stat),"): ", names(optim_tmp), sep="", fill=TRUE)
   optim_tmp[[1]]$par
 }
 
@@ -175,8 +180,7 @@ if(opt$fit_level > 0) {
   grid <- seq(1, opt$plot_x_lim, length=1000)
   # Full data
   optim_fit <- ddply(ld_data, .(File,LD), fit_func, fit_level=opt$fit_level)
-  if(opt$debug)
-    print(optim_fit)
+
   # Bootstrap
   if(opt$fit_boot > 0) {
     boot_rep_fit <- c()
@@ -185,13 +189,13 @@ if(opt$fit_level > 0) {
       boot_rep_fit <- rbind(boot_rep_fit, data.frame(ddply(ld_bootdata, .(File,LD), fit_func, fit_level=opt$fit_level), Rep=b))
     }
     boot_fit <- as.data.frame(as.matrix(aggregate(cbind(V1,V2,V3) ~ File+LD, boot_rep_fit, quantile, probs=c(0.025,0.975), names=FALSE)), stringsAsFactors=FALSE)
-    all_fit <- merge(optim_fit, boot_fit)
+    all_fit <- merge(optim_fit, boot_fit, sort=FALSE)
     optim_data <- ddply(all_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"]), ci_l=ld_exp(x[,c("V1.1","V2.1","V3.2")], grid, x[,"LD"]), ci_u=ld_exp(x[,c("V1.2","V2.2","V3.1")], grid, x[,"LD"])) )
   } else {
     optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"])) )
   }
-  # Merge data together with exrta info from input
-  fit_data <- merge(optim_data, ld_files)
+  # Merge data together with extra info from input
+  fit_data <- merge(ld_files, optim_data, sort=FALSE)
 }
 # Print 
 print(optim_fit)
@@ -201,7 +205,7 @@ if(opt$debug)
 
 
 ### Create base plot
-plot <- ggplot() + xlim(0, opt$plot_x_lim)
+plot <- ggplot() + xlim(0, opt$plot_x_lim) + theme(panel.spacing=unit(1,"lines"))
 if(opt$plot_wrap) {
   #cat('# WRAP mode', fill=TRUE)
   plot <- plot + facet_wrap(opt$plot_wrap_formula, ncol=opt$plot_wrap, scales=opt$plot_axis_scales)
@@ -209,9 +213,11 @@ if(opt$plot_wrap) {
   #cat('# GRID mode', fill=TRUE)
   plot <- plot + facet_grid(opt$plot_wrap_formula, scales=opt$plot_axis_scales)
 }
+
 # Add LD decay fit CI
 if(opt$fit_boot > 0)
   plot <- plot + geom_ribbon(data=fit_data, aes(x=Dist,ymin=ci_l,ymax=ci_u), alpha=0.2)
+
 # Add data points
 if(opt$plot_data){
   # Check format
@@ -225,31 +231,41 @@ if(opt$plot_data){
   # Add points
   plot <- plot + geom_point(data=ld_data, aes_string(x="Dist",y="value",colour=opt$plot_group), size=0.05, alpha=0.2)
 }
+
 # Add LD decay best fit
 if(length(opt$ld) > 0) {
   header <- colnames(fit_data)
   grp <- header[!header %in% unique(c(as.character(opt$plot_wrap_formula), opt$plot_group, "Dist", "value", "File", "ci_l", "ci_u"))]
   if(length(grp) == 0) grp <- NULL
   plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",group=opt$plot_group,colour=opt$plot_group,linetype=grp))
-  if(n_groups == 1 && opt$plot_data)
+  if(opt$plot_data)
     plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",group=opt$plot_group), size=0.1, alpha=0.2, colour="black")
 }
-# Remove legend if plotting just a single variable
-if(n_groups < 2)
-  plot <- plot + theme(legend.position="none")
 
 
 
-### Output plot
+### Set plot size
 n_plots <- length(unique(ggplot_build(plot)$data[[1]]$PANEL))
-par <- ggplot_build(plot)$layout$facet$params
-facet_dims <- wrap_dims(n_plots, par$nrow, par$ncol)
+par <- dcast(fit_data, opt$plot_wrap_formula, length, fill=0)
+rownames(par)=par[,1]
 if(opt$debug){
   cat(n_files, n_ld, n_groups, n_plots, fill=TRUE)
-  cat(facet_dims[1], facet_dims[2], fill=TRUE)
+  cat(nrow(par), ncol(par)-1, fill=TRUE)
 }
-# Save
-plot_height <- opt$plot_size[1] * facet_dims[2]
-plot_width <- opt$plot_size[2] * facet_dims[1]
+plot_height <- opt$plot_size[1] * nrow(par)
+plot_width <- opt$plot_size[2] * (ncol(par)-1)
+
+
+
+### Remove legend if plotting just a single variable
+if(n_groups < 2 || opt$plot_no_legend) {
+  plot <- plot + theme(legend.position="none")
+} else {
+  plot_width = plot_width + 1
+}
+
+
+
+### Save plot
 ggsave(opt$out, plot=plot, height=plot_height, width=plot_width, scale=opt$plot_scale, limitsize=FALSE)
 x <- warnings()
