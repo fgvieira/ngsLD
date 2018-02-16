@@ -18,22 +18,23 @@ options(width = 160)
 option_list <- list(
   make_option(c('--ld_files'), action='store', type='character', default=NULL, help = 'File with list of LD files to fit and plot (if ommited, can be read from STDIN)'),
   make_option(c('--header'), action='store_true', type='logical', default=FALSE, help='Input file has header'),
-  make_option(c('--col'), action='store', type='numeric', default=3, help='Which column is distance between sites'),
-  make_option(c('--ld'), action='store', type='character', default="r2", help='Which LD stats to plot (r2pear, D, Dp, r2)'),
-  make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis'),
-  make_option(c('--fit_boot'), action='store', type='numeric', default=0, help='Number of bootstrap replicates for fitting CI'),
-  make_option(c('--fit_bin_size'), action='store', type='numeric', default=0, help='Size of bin to fit'),
-  make_option(c('--fit_level'), action='store', type='numeric', default=1, help='Fitting level 0) no fitting, best of 1) Nelder-Mead, 2) and BFGS, 3) and L-BFGS-B)'),
+  make_option(c('--col'), action='store', type='numeric', default=3, help='Which column is distance between sites? [%default]'),
+  make_option(c('--ld'), action='store', type='character', default="r2", help='Which LD stats to plot (r2pear, D, Dp, r2) [%default]'),
+  make_option(c('--n_ind'), action='store', type='numeric', default=50, help='How many individuals in the sample (for r^2 fitting correction)? [%default]'),
+  make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis. [%default]'),
+  make_option(c('--fit_boot'), action='store', type='numeric', default=0, help='Number of bootstrap replicates for fitting CI. [%default]'),
+  make_option(c('--fit_bin_size'), action='store', type='numeric', default=250, help='Bin data into fixed-sized windows and use the average for fitting. [default %default bps]'),
+  make_option(c('--fit_level'), action='store', type='numeric', default=1, help='Fitting level 0) no fitting, best of 1) Nelder-Mead, 2) and BFGS, 3) and L-BFGS-B). [%default]'),
   make_option(c('--plot_group'), action='store', type='character', default='File', help='Group variable'),
   make_option(c('--plot_data'), action='store_true', type='logical', default=FALSE, help='Also plot data points?'),
-  make_option(c('--plot_bin_size'), action='store', type='numeric', default=100, help='Size of bin to plot'),
-  make_option(c('--plot_x_lim'), action='store', type='numeric', default=0, help='X-axis plot limit (in kb)'),
+  make_option(c('--plot_bin_size'), action='store', type='numeric', default=1000, help='Bin data into fixed-sized windows and use the average for plotting. [default %default bps]'),
+  make_option(c('--plot_x_lim'), action='store', type='numeric', default=0, help='X-axis plot limit (in kb). [%default]'),
   make_option(c('--plot_axis_scales'), action='store', type='character', default='fixed', help='Plot axis scales: fixed (default), free, free_x or free_y'),
-  make_option(c('--plot_size'), action='store', type='character', default='1,1', help='Plot size (height,width)'),
-  make_option(c('--plot_scale'), action='store', type='numeric', default=2.5, help='Plot scale'),
+  make_option(c('--plot_size'), action='store', type='character', default='1,1', help='Plot size (height,width). [%default]'),
+  make_option(c('--plot_scale'), action='store', type='numeric', default=2.5, help='Plot scale. [%default]'),
   make_option(c('--plot_wrap'), action='store', type='numeric', default=0, help='Plot in WRAP with X columns (default in GRID)'),
   make_option(c('--plot_no_legend'), action='store_true', type='logical', default=FALSE, help='REmove legend from plot'),
-  make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default='File ~ LD', help='Plot formula for WRAP'),
+  make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default='File ~ LD', help='Plot formula for WRAP. [%default]'),
   make_option(c('-o','--out'), action='store', type='character', default=NULL, help='Output file'),
   make_option(c('--debug'), action='store_true', type='logical', default=FALSE, help='Debug mode. Extra output...')
 )
@@ -63,9 +64,9 @@ n_ld = length(opt$ld)
 if(opt$max_kb_dist < 50)
   warning("Fitting of LD decay is highly unreliable at short distances (<50kb).")
 
-# If there is binning for the fit, plot that data (do not bin again)
-if(opt$fit_bin_size)
-  opt$plot_bin_size = 0
+# Check binning sizes
+if(opt$fit_bin_size > opt$plot_bin_size)
+   stop("Fitting bin size cannot be greater than plotting bin size!")
 
 # Parse plot_size
 opt$plot_size <- as.numeric(unlist(strsplit(opt$plot_size, ",")))
@@ -98,8 +99,8 @@ for (i in 1:n_files) {
   tmp_data <- tmp_data[which(tmp_data$Dist < opt$max_kb_dist*1000),]
   # Bin data
   if(opt$fit_bin_size != 0) {
-    tmp_data$Dist <- as.integer(tmp_data$Dist / opt$fit_bin_size) * opt$fit_bin_size + 1
-    tmp_data <- aggregate(. ~ Dist, data=tmp_data, mean)
+    tmp_data$Dist <- as.integer(tmp_data$Dist / opt$fit_bin_size) * opt$fit_bin_size
+    tmp_data <- aggregate(. ~ Dist, data=tmp_data, median)
   }
   tmp_data$File <- ld_file
   ld_data <- rbind(ld_data, melt(tmp_data, c("File","Dist"), variable.name="LD", na.rm=TRUE))
@@ -125,15 +126,23 @@ if(opt$debug)
 ld_exp <- function(par, dist, ld_stat) {
   par <- as.numeric(par)
   if(ld_stat == "r2" || ld_stat == "r2pear") {
-    #1 / (1 + par[1] * dist) # Theoretical expectation
     C = par[1] * dist
-    n = 50
-    ((10+C) / ((2+C)*(11+C))) * (1+((3+C)*(12+12*C+C^2))/(n*(2+C)*(11+C)))
+    r2h = par[2]
+    r2l = par[3]
+    if(0){
+      # Theoretical expectation
+      #1 / (1 + C)
+      # Theoretical expectation with Dh and Dl (not recomended since it assumes an infinite sample size)
+      (r2h - r2l) / (1 + C) + r2l
+    }else{
+      # Adjusted for finite samples sizes
+      ((10+C) / ((2+C)*(11+C))) * (1+((3+C)*(12+12*C+C^2))/(opt$n_ind*(2+C)*(11+C)))
+    }
   } else if(ld_stat == "Dp") {
     D0 = 1
-    Dl = par[1]
+    t = par[1]
     Dh = par[2]
-    t = par[3]
+    Dl = par[3]
     Dl + (Dh-Dl) * D0 * (1 - dist/1000000)^t # Assuming 1cm = 1Mb
   }
 }
@@ -149,25 +158,28 @@ fit_func <- function(x, fit_level) {
   ld_stat <- x$LD[1]
   # There is no fitting model for D
   if(ld_stat == "D") return(NULL)
-
+  
   # Fit LD model
   if(ld_stat == 'Dp') {
-    par <- data.frame(init=c(0.01,0.9,10), low_lim=c(0,0,0), up_lim=c(1,1,Inf))
-    optim_tmp <- list("BFGS" = optim(par$init, fit_eval, obs_data=x, method=c("BFGS")))
-    if(fit_level > 1) optim_tmp <- append(optim_tmp, list("Nelder-Mead" = optim(par$init, fit_eval, obs_data=x, method=c("Nelder-Mead"))) )
-    if(fit_level > 2) optim_tmp <- append(optim_tmp, list("L-BFGS-B" = optim(par$init, fit_eval, obs_data=x, method=c("L-BFGS-B"), lower=par$low_lim, upper=par$up_lim)) )
+    par <- data.frame(init=c(10,0.9,0.1), low_lim=c(0,0,0), up_lim=c(Inf,1,1))
   } else { # r2 and r2pear
-    par <- data.frame(init=c(0.01), low_lim=c(0), up_lim=c(1))
-    optim_tmp <- list("Brent" = optim(par$init, fit_eval, obs_data=x, method=c("Brent"), lower=par$low_lim, upper=par$up_lim))
-    optim_tmp[[1]]$par <- c(optim_tmp[[1]]$par, 0, 0)
+    par <- data.frame(init=c(0.01,0.9,0.1), low_lim=c(0,0,0), up_lim=c(1,1,1))
   }
+  optim_tmp <- list("BFGS" = optim(par$init, fit_eval, obs_data=x, method="BFGS"))
+  if(fit_level > 1) optim_tmp <- append(optim_tmp, list("Nelder-Mead" = optim(par$init, fit_eval, obs_data=x, method="Nelder-Mead")) )
+  if(fit_level > 2) optim_tmp <- append(optim_tmp, list("L-BFGS-B" = optim(par$init, fit_eval, obs_data=x, method="L-BFGS-B", lower=par$low_lim, upper=par$up_lim)) )
   if(opt$debug) lapply(optim_tmp, function(x){ cat(format(as.numeric(x$par),digits=4,nsmall=6,scientific=FALSE), format(as.numeric(x$value),digits=7,nsmall=4), x$counts, x$convergence, x$message, sep="\t", fill=TRUE) })
+  # If not using the theoretical D' decay curve (with Dh and Dl)
+  if(!0)
+    if(ld_stat != 'Dp') optim_tmp <- lapply(optim_tmp, function(x){x$par[2]=x$par[3]=0;x})
+  
   # Filter out runs that not-converged and/or with out-of-bound parameters
   # Columns stand for: par1, par2, par3, score, counts, convergence, message
   optim_tmp <- Filter(function(x){x$convergence == 0 &
                                   x$par[1] >= par$low_lim[1] & x$par[1] <= par$up_lim[1] & 
-                                  (ld_stat != 'Dp' | x$par[2] >= par$low_lim[2] & x$par[2] <= par$up_lim[2] &
-                                                     x$par[3] >= par$low_lim[3] & x$par[3] <= par$up_lim[3])}, optim_tmp)
+                                  x$par[2] >= par$low_lim[2] & x$par[2] <= par$up_lim[2] &
+                                  x$par[3] >= par$low_lim[3] & x$par[3] <= par$up_lim[3]}, optim_tmp)
+  
   # Pick best run
   optim_tmp <- optim_tmp[order(sapply(optim_tmp,'[[',2))[1]]
   if(length(optim_tmp) != 1) stop("convergence analyses failed.")
@@ -190,7 +202,7 @@ if(opt$fit_level > 0) {
     }
     boot_fit <- as.data.frame(as.matrix(aggregate(cbind(V1,V2,V3) ~ File+LD, boot_rep_fit, quantile, probs=c(0.025,0.975), names=FALSE)), stringsAsFactors=FALSE)
     all_fit <- merge(optim_fit, boot_fit, sort=FALSE)
-    optim_data <- ddply(all_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"]), ci_l=ld_exp(x[,c("V1.1","V2.1","V3.2")], grid, x[,"LD"]), ci_u=ld_exp(x[,c("V1.2","V2.2","V3.1")], grid, x[,"LD"])) )
+    optim_data <- ddply(all_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"]), ci_l=ld_exp(x[,c("V1.2","V2.1","V3.1")], grid, x[,"LD"]), ci_u=ld_exp(x[,c("V1.1","V2.2","V3.2")], grid, x[,"LD"])) )
   } else {
     optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"])) )
   }
@@ -224,7 +236,7 @@ if(opt$plot_data){
   if(ncol(ld_data) < 4)
     stop("Invalid `ld_data` format.\n")
   # Bin data
-  if(opt$plot_bin_size != 0) {
+  if(opt$plot_bin_size > 1) {
     ld_data$Dist <- as.integer(ld_data$Dist / opt$plot_bin_size) * opt$plot_bin_size
     ld_data <- aggregate(value ~ ., data=ld_data, median)
   }
