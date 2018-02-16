@@ -20,7 +20,7 @@ option_list <- list(
   make_option(c('--header'), action='store_true', type='logical', default=FALSE, help='Input file has header'),
   make_option(c('--col'), action='store', type='numeric', default=3, help='Which column is distance between sites? [%default]'),
   make_option(c('--ld'), action='store', type='character', default="r2", help='Which LD stats to plot (r2pear, D, Dp, r2) [%default]'),
-  make_option(c('--n_ind'), action='store', type='numeric', default=50, help='How many individuals in the sample (for r^2 fitting correction)? [%default]'),
+  make_option(c('--n_ind'), action='store', type='numeric', default=0, help='How many individuals in the sample (for r^2 fitting correction)?'),
   make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis. [%default]'),
   make_option(c('--fit_boot'), action='store', type='numeric', default=0, help='Number of bootstrap replicates for fitting CI. [%default]'),
   make_option(c('--fit_bin_size'), action='store', type='numeric', default=250, help='Bin data into fixed-sized windows and use the average for fitting. [default %default bps]'),
@@ -57,8 +57,12 @@ if(opt$debug)
 if(!is.null(opt$ld))
   opt$ld <- unlist(strsplit(opt$ld, ","))
 if(!all(opt$ld %in% c("r2pear", "D", "Dp", "r2")))
-  error("Invalid LD measure to plot")
+  stop("Invalid LD measure to plot")
 n_ld = length(opt$ld)
+
+# Check if number of individuals was specified
+if(any(opt$ld %in% c("r2pear", "r2")) && !opt$n_ind)
+  stop("Fitting of R^2 requires number of individuals")
 
 # Check max_kb_dist parameter 
 if(opt$max_kb_dist < 50)
