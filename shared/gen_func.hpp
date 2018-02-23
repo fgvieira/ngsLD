@@ -26,8 +26,9 @@ const uint64_t ITER_MAX = 100;
 #define bit_set(a,b)    ((a) |  ((uinteger)1 << (b)))
 
 // Convert matrix coordinates to vector
-#define m2v(a,b,n) (a * n + b)
-#define hm2v(a,b,n) (m2v(a,b,n) - a * (a + 1) / 2)
+#define m2v(a,b,n) (a * n + b) // matrix
+#define hm2v(a,b,n) (m2v(a,b,n) - a * (a + 1) / 2) // half-matrix
+#define sm2v(a,b,n) (min(hm2v(a,b,n), hm2v(b,a,n))) // symmetrical matrix
 
 // PATH bitwise operators
 #define path_pos_get(seq, pos)  ( seq[pos/8]  & (1 << pos%8) )

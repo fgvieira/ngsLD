@@ -195,6 +195,10 @@ void chomp(char *str){
 
 
 // Open gzFile
+// rb - read
+// wb6 - write with compresion level 6
+// wb9 - write with compresion level 9
+// wbT -  write without compression
 gzFile open_gzfile(const char* name, const char* mode, uint64_t buf_size){
   gzFile fh = NULL;
 
