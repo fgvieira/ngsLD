@@ -1,6 +1,6 @@
-#!/usr/bin/Rscript
+#!/bin/env Rscript
 
-#FileName: fit_LDdecay.R
+#FileName: fit_LDdecay.R v1.0
 #Author: "Filipe G. Vieira (fgarrettvieira _at_ gmail [dot] com)"
 #Author: "Emma Fox (e.fox16 _at_ imperial [dot] ac [dot] uk)"
 
@@ -34,7 +34,7 @@ option_list <- list(
   make_option(c('--plot_scale'), action='store', type='numeric', default=2.5, help='Plot scale. [%default]'),
   make_option(c('--plot_wrap'), action='store', type='numeric', default=0, help='Plot in WRAP with X columns (default in GRID)'),
   make_option(c('--plot_no_legend'), action='store_true', type='logical', default=FALSE, help='REmove legend from plot'),
-  make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default='File ~ LD', help='Plot formula for WRAP. [%default]'),
+  make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default=NULL, help='Plot formula for WRAP. [%default]'),
   make_option(c('-o','--out'), action='store', type='character', default=NULL, help='Output file'),
   make_option(c('--debug'), action='store_true', type='logical', default=FALSE, help='Debug mode. Extra output...')
 )
@@ -78,7 +78,8 @@ if(length(opt$plot_size) < 2)
   opt$plot_size <- c(opt$plot_size, opt$plot_size)
 
 # Plot formula
-opt$plot_wrap_formula <- as.formula(opt$plot_wrap_formula)
+if(!is.null(opt$plot_wrap_formula))
+  opt$plot_wrap_formula <- as.formula(opt$plot_wrap_formula)
 
 # Set output file name (if not defined)
 if(is.null(opt$out))
@@ -222,12 +223,14 @@ if(opt$debug)
 
 ### Create base plot
 plot <- ggplot() + xlim(0, opt$plot_x_lim) + theme(panel.spacing=unit(1,"lines"))
-if(opt$plot_wrap) {
-  #cat('# WRAP mode', fill=TRUE)
-  plot <- plot + facet_wrap(opt$plot_wrap_formula, ncol=opt$plot_wrap, scales=opt$plot_axis_scales)
-} else {
-  #cat('# GRID mode', fill=TRUE)
-  plot <- plot + facet_grid(opt$plot_wrap_formula, scales=opt$plot_axis_scales)
+if(!is.null(opt$plot_wrap_formula)) {
+  if(opt$plot_wrap) {
+    #cat('# WRAP mode', fill=TRUE)
+    plot <- plot + facet_wrap(opt$plot_wrap_formula, ncol=opt$plot_wrap, scales=opt$plot_axis_scales)
+  } else {
+    #cat('# GRID mode', fill=TRUE)
+    plot <- plot + facet_grid(opt$plot_wrap_formula, scales=opt$plot_axis_scales)
+  }
 }
 
 # Add LD decay fit CI
@@ -262,14 +265,18 @@ if(length(opt$ld) > 0) {
 
 ### Set plot size
 n_plots <- length(unique(ggplot_build(plot)$data[[1]]$PANEL))
-par <- dcast(fit_data, opt$plot_wrap_formula, length, fill=0)
-rownames(par)=par[,1]
+if(!is.null(opt$plot_wrap_formula)) {
+  par <- dcast(fit_data, opt$plot_wrap_formula, length, fill=0)
+  rownames(par) <- par[,1]; par <- par[,-1]
+} else {
+  par <- matrix()
+}
 if(opt$debug){
   cat(n_files, n_ld, n_groups, n_plots, fill=TRUE)
-  cat(nrow(par), ncol(par)-1, fill=TRUE)
+  cat(nrow(par), ncol(par), fill=TRUE)
 }
 plot_height <- opt$plot_size[1] * nrow(par)
-plot_width <- opt$plot_size[2] * (ncol(par)-1)
+plot_width <- opt$plot_size[2] * ncol(par)
 
 
 
