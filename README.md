@@ -64,34 +64,30 @@ It is advisable that SNPs be called first, since monomorphic sites are not infor
 
 ### Possible analyses
 ##### LD pruning
-For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts\prune_graph.pl` to prune your dataset and only keep unlinked sites.
+For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts\prune_graph.pl` to prune your dataset and get a list of unlinked sites.
 
-    % perl --in_file testLD_8.ld --max_dist 5000 --min_weight 0.5 --weight_field 6 --print_excl testLD_pruned.id > testLD_unlinked.id
+    % perl scripts\prune_graph.pl --in_file testLD_8.ld --max_kb_dist 5 --min_weight 0.5 --out testLD_unlinked.id
 
 * `--in_file FILE`: File with input network [STDIN]
-* `--subset FILE`: File with node IDs to include (one per line)
-* `--max_dist INT`: Maximum distance between nodes (input file 3rd column) to assume they are connected
+* `--max_kb_dist INT`: Maximum distance between nodes (input file 3rd column) to assume they are connected
 * `--min_weight FLOAT`: Minimum weight (in `--weight_field`) of an edge to assume nodes are connected
-* `--weight_field INT`: Column from input file with weights [4]
-* `--weight_type CHAR`: How to calculate most connected node: (n)umber of connections [default], sum of (e)dges' weight, or sum of (a)bsolute edges' weight
-* `--remove_heavy`: Remove 'heaviest' nodes, instead of keeping them [default]
-* `--print_excl FILE`: File to dump excluded nodes
 * `--out FILE`: Path to output file [STDOUT]
 
+For more advanced options, please check script help (`perl scripts\prune_graph.pl --help`).
 
 ##### LD decay
-If you are interested on the rate of LD decay, you can try to fit a distribution to your data. We provide the script `scripts\fit_LDdecay.R` that uses the R function `optim` to fit LD decay models for `r2` ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and `D'` ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)).
+If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts\fit_LDdecay.R` to fit LD decay models for `r2` ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and `D'` ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)).
 
     % Rscript --vanilla --slave scripts/fit_LDdecay.R --ld_files path/to/ld_files.list --out plot.pdf
 
 * `--ld_files FILE`: file with list of LD files to fit and plot (if ommited, can be read from STDIN)
 * `--out`: Name of output plot
 
-For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`)
+For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`).
 
 ### Hints
 * `ngsLD` performance seems to drop considerable under extremely low coverages (<1x); consider these cases only if you have large sample sizes (>100 individuals).
-* For some analyses (e.g. LD decay) consider sampling your data (`--rnd_sample`), since `ngsLD` will be much faster and you might don't need all comparisons.
+* For some analyses (e.g. LD decay) consider sampling your data (`--rnd_sample`), since `ngsLD` will be much faster and you probably don't need all comparisons.
 * For the LD decay, as a rule-of-thumb, consider using at least 10'000 SNPs; check the confidence interval and, if too wide, increase number of SNPs.
 
 ### Thread pool
