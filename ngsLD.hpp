@@ -28,7 +28,6 @@ typedef struct {
   char *out;
   FILE *out_fh;
   uint n_threads;
-  bool version;
   uint verbose;
 
   double ***geno_lkl;     // n_sites+1 * n_ind * N_GENO

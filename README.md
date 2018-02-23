@@ -51,7 +51,6 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--extend_out`: print extended output (see below).
 * `--out FILE`: output file name. [stdout]
 * `--n_threads INT`: number of threads to use. [1]
-* `--version`: prints program version and exits.
 * `--verbose INT`: selects verbosity level. [1]
 
 ### Input data
@@ -91,9 +90,9 @@ If you are interested on the rate of LD decay, you can try to fit a distribution
 For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`)
 
 ### Hints
-* `ngsLD` performance seems to drop considerable under extremely low coverages (<1x); consider these cases only if you have large sample sizes (>100 individuals)
+* `ngsLD` performance seems to drop considerable under extremely low coverages (<1x); consider these cases only if you have large sample sizes (>100 individuals).
 * For some analyses (e.g. LD decay) consider sampling your data (`--rnd_sample`), since `ngsLD` will be much faster and you might don't need all comparisons.
-* For the LD decay, as a rule-of-thumb, consider using at least 10'000 SNPs (and check the confidence interval)
+* For the LD decay, as a rule-of-thumb, consider using at least 10'000 SNPs; check the confidence interval and, if too wide, increase number of SNPs.
 
 ### Thread pool
 The thread pool	implementation was adapted from Mathias Brossard's and is freely available from:

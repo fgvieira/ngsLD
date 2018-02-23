@@ -21,7 +21,7 @@
 #include<pthread.h>
 #include "ngsLD.hpp"
 
-char const* version = "0.0.1b";
+char const* version = "1.0.0";
 
 
 int main (int argc, char** argv) {
@@ -31,11 +31,6 @@ int main (int argc, char** argv) {
   params* pars = new params;
   init_pars(pars);
   parse_cmd_args(pars, argc, argv);
-
-  if(pars->version) {
-    fprintf(stderr, "ngsLD v%s\nCompiled on %s @ %s", version, __DATE__, __TIME__);
-    exit(0);
-  }
 
   
   
