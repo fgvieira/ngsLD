@@ -1,6 +1,6 @@
 #!/bin/env Rscript
 
-#FileName: fit_LDdecay.R v1.0
+#FileName: fit_LDdecay.R v1.0.1
 #Author: "Filipe G. Vieira (fgarrettvieira _at_ gmail [dot] com)"
 #Author: "Emma Fox (e.fox16 _at_ imperial [dot] ac [dot] uk)"
 
@@ -57,20 +57,20 @@ if(opt$debug)
 if(!is.null(opt$ld))
   opt$ld <- unlist(strsplit(opt$ld, ","))
 if(!all(opt$ld %in% c("r2pear", "D", "Dp", "r2")))
-  stop("Invalid LD measure to plot")
+  stop("Invalid LD measure to plot", call.=opt$debug)
 n_ld = length(opt$ld)
 
 # Check if number of individuals was specified
 if(any(opt$ld %in% c("r2pear", "r2")) && !opt$n_ind)
-  stop("Fitting of R^2 requires number of individuals")
+  stop("Fitting of R^2 requires number of individuals", call.=opt$debug)
 
 # Check max_kb_dist parameter 
 if(opt$max_kb_dist < 50)
-  warning("Fitting of LD decay is highly unreliable at short distances (<50kb).")
+  warning("Fitting of LD decay is highly unreliable at short distances (<50kb).", call.=opt$debug)
 
 # Check binning sizes
 if(opt$fit_bin_size > opt$plot_bin_size)
-   stop("Fitting bin size cannot be greater than plotting bin size!")
+   stop("Fitting bin size cannot be greater than plotting bin size!", call.=opt$debug)
 
 # Parse plot_size
 opt$plot_size <- as.numeric(unlist(strsplit(opt$plot_size, ",")))
@@ -97,7 +97,7 @@ for (i in 1:n_files) {
     cat("Reading file:", ld_file, fill=TRUE)
   tmp_data <- read.table(gzfile(ld_file), sep="\t", quote="\"", dec=".")[-(1:(opt$col-1))]
   if(ncol(tmp_data) < 5)
-    stop('Invalid LD file format.\n')
+    stop('Invalid LD file format.\n', call.=opt$debug)
   colnames(tmp_data) <- header
   tmp_data <- tmp_data[, which(names(tmp_data) %in% c("Dist",opt$ld))]
   # Filter by minimum distance
@@ -154,7 +154,7 @@ ld_exp <- function(par, dist, ld_stat) {
 # Evaluation function
 fit_eval <- function(par, obs_data) {
   if(length(unique(obs_data$LD)) != 1)
-    stop("Invalid data.frame (several LD measures)")
+    stop("Invalid data.frame (several LD measures)", call.=opt$debug)
   model <- ld_exp(par, obs_data$Dist, obs_data$LD[1])
   sum((model - obs_data$value)^2)
 }
@@ -187,7 +187,7 @@ fit_func <- function(x, fit_level) {
   
   # Pick best run
   optim_tmp <- optim_tmp[order(sapply(optim_tmp,'[[',2))[1]]
-  if(length(optim_tmp) != 1) stop("convergence analyses failed.")
+  if(length(optim_tmp[[1]]) == 0) stop("convergence analyses failed. Please try increasing the fit level (--fit_level)", call.=opt$debug)
   if(opt$debug) cat("Best fit for ", as.character(x$File[1]), " (",as.vector(ld_stat),"): ", names(optim_tmp), sep="", fill=TRUE)
   optim_tmp[[1]]$par
 }
@@ -241,7 +241,7 @@ if(opt$fit_boot > 0)
 if(opt$plot_data){
   # Check format
   if(ncol(ld_data) < 4)
-    stop("Invalid `ld_data` format.\n")
+    stop("Invalid `ld_data` format.\n", call.=opt$debug)
   # Bin data
   if(opt$plot_bin_size > 1) {
     ld_data$Dist <- as.integer(ld_data$Dist / opt$plot_bin_size) * opt$plot_bin_size
