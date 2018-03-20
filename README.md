@@ -23,6 +23,9 @@ and run:
 
     % cd ngsLD
     % make
+
+To run the tests (only if installed through [ngsTools](https://github.com/mfumagalli/ngsTools)):
+
     % make test
 
 Executables are built into the main directory. If you wish to clean all binaries and intermediate files:

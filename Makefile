@@ -4,10 +4,10 @@ CXX=g++
 SHARED_DIR = ./shared
 SHARED_LIB = gen_func.cpp read_data.cpp threadpool.c
 
-CFLAGS = -I$(SHARED_DIR)
+CFLAGS = -I$(SHARED_DIR) $(shell pkg-config --cflags gsl)
 #DFLAGS = -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
 DFLAGS = -O3 -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
-LIB = -lgsl -lgslcblas -lz -lpthread
+LIB = $(shell pkg-config --libs gsl) -lz -lpthread
 
 
 
