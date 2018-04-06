@@ -67,26 +67,31 @@ It is advisable that SNPs be called first, since monomorphic sites are not infor
 
 ### Possible analyses
 ##### LD pruning
-For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts\prune_graph.pl` to prune your dataset and get a list of unlinked sites.
+For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts/prune_graph.pl` to prune your dataset and get a list of unlinked sites.
 
-    % perl scripts\prune_graph.pl --in_file testLD_8.ld --max_kb_dist 5 --min_weight 0.5 --out testLD_unlinked.id
+    % perl scripts/prune_graph.pl --in_file testLD_2.ld --max_kb_dist 5 --min_weight 0.5 --out testLD_unlinked.id
 
 * `--in_file FILE`: File with input network [STDIN]
 * `--max_kb_dist INT`: Maximum distance between nodes (input file 3rd column) to assume they are connected
 * `--min_weight FLOAT`: Minimum weight (in `--weight_field`) of an edge to assume nodes are connected
 * `--out FILE`: Path to output file [STDOUT]
 
-For more advanced options, please check script help (`perl scripts\prune_graph.pl --help`).
+For more advanced options, please check script help (`perl scripts/prune_graph.pl --help`).
 
 ##### LD decay
-If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts\fit_LDdecay.R` to fit LD decay models for `r2` ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and `D'` ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)).
+If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts/fit_LDdecay.R` to fit LD decay models for ![r^2](http://mathurl.com/ya2uo8sp.png) ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and ![D'](http://mathurl.com/y8mgegb8.png) ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)).
 
-    % Rscript --vanilla --slave scripts/fit_LDdecay.R --ld_files path/to/ld_files.list --out plot.pdf
+    % Rscript --vanilla --slave scripts/fit_LDdecay.R --ld_files ld_files.list --out plot.pdf
 
 * `--ld_files FILE`: file with list of LD files to fit and plot (if ommited, can be read from STDIN)
 * `--out`: Name of output plot
 
 For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`).
+
+##### LD blocks
+To plot LD blocks, we also provide a small script as an example for how it can be easily done in `R` using the `LDheatmap` package (by default, ![r^2](http://mathurl.com/ya2uo8sp.png) is plotted).
+
+    cat testLD_2.ld | bash ../scripts/LD_blocks.sh chrSIM_21 2000 5000
 
 ### Hints
 * `ngsLD` performance seems to drop considerable under extremely low coverages (<1x); consider these cases only if you have large sample sizes (>100 individuals).
