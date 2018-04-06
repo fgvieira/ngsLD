@@ -1,6 +1,6 @@
 #!/bin/env Rscript
 
-#FileName: fit_LDdecay.R v1.0.2
+#FileName: fit_LDdecay.R v1.0.3
 #Author: "Filipe G. Vieira (fgarrettvieira _at_ gmail [dot] com)"
 #Author: "Emma Fox (e.fox16 _at_ imperial [dot] ac [dot] uk)"
 
@@ -10,7 +10,7 @@ library(tools)
 library(ggplot2)
 library(reshape2)
 library(plyr)
-options(width = 160) 
+options(width = 200) 
 
 
 # Calculates the mean of the top 95% quantile (might be usefull if wanted to test GWAS power)
@@ -36,20 +36,22 @@ option_list <- list(
   make_option(c('--plot_x_lim'), action='store', type='numeric', default=0, help='X-axis plot limit (in kb). [%default]'),
   make_option(c('--plot_axis_scales'), action='store', type='character', default='fixed', help='Plot axis scales: fixed (default), free, free_x or free_y'),
   make_option(c('--plot_size'), action='store', type='character', default='1,2', help='Plot size (height,width). [%default]'),
-  make_option(c('--plot_scale'), action='store', type='numeric', default=2.5, help='Plot scale. [%default]'),
+  make_option(c('--plot_scale'), action='store', type='numeric', default=1.5, help='Plot scale. [%default]'),
   make_option(c('--plot_wrap'), action='store', type='numeric', default=0, help='Plot in WRAP with X columns (default in GRID)'),
   make_option(c('--plot_no_legend'), action='store_true', type='logical', default=FALSE, help='REmove legend from plot'),
   make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default=NULL, help='Plot formula for WRAP. [%default]'),
   make_option(c('-o','--out'), action='store', type='character', default=NULL, help='Output file'),
+  make_option(c('--seed'), action='store', type='numeric', default=NULL, help='Seed for random number generator'),
   make_option(c('--debug'), action='store_true', type='logical', default=FALSE, help='Debug mode. Extra output...')
 )
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
 # Set random seed
-rseed = as.integer(runif(1,1,100000))
-cat("Random seed:", rseed, fill=TRUE)
-set.seed(rseed)
+if(is.null(opt$seed))
+  opt$seed <- as.integer(runif(1,1,100000))
+cat("Random seed:", opt$seed, fill=TRUE)
+set.seed(opt$seed)
 
 # Parse input LD files
 if(is.null(opt$ld_files)) 
@@ -71,8 +73,12 @@ if(!all(opt$ld %in% c("r2pear", "D", "Dp", "r2")))
 n_ld = length(opt$ld)
 
 # Check if number of individuals was specified
-if(any(opt$ld %in% c("r2pear", "r2")) && !opt$n_ind)
-  stop("Fitting of R^2 requires number of individuals", call.=opt$debug)
+if(opt$n_ind < 0)
+  stop("Number of individuals must be greater than zero", call.=opt$debug)
+if(!any(opt$ld %in% c("r2","r2pear")) && opt$n_ind)
+  stop("Number of individuals is only used for r^2 fitting", call.=opt$debug)
+for(i in opt$ld)
+  cat("==> Fitting", i, "LD decay assuming a", ifelse(i == "Dp" || opt$n_ind == 0, "three (rate of decay, max LD and min LD)", "one (rate of decay)"), "parameter decay model", fill=TRUE)
 
 # Check max_kb_dist parameter 
 if(opt$max_kb_dist < 50)
@@ -136,7 +142,6 @@ if(opt$debug)
 
 
 
-theor_r2 = TRUE
 ### Fit decay
 # Model function
 ld_exp <- function(par, dist, ld_stat) {
@@ -145,14 +150,14 @@ ld_exp <- function(par, dist, ld_stat) {
     C = par[1] * dist
     r2h = par[2]
     r2l = par[3]
-    if(theor_r2){
+    if(opt$n_ind){
+      # LD decay curve adjusted for finite samples sizes
+      ((10+C) / ((2+C)*(11+C))) * (1+((3+C)*(12+12*C+C^2))/(opt$n_ind*(2+C)*(11+C)))
+    }else{
       # Theoretical expectation
       #1 / (1 + C)
-      # Theoretical expectation with r2h and r2l (not recomended since it assumes an infinite sample size)
+      # Theoretical expectation with r2h and r2l
       (r2h - r2l) / (1 + C) + r2l
-    }else{
-      # Adjusted for finite samples sizes
-      ((10+C) / ((2+C)*(11+C))) * (1+((3+C)*(12+12*C+C^2))/(opt$n_ind*(2+C)*(11+C)))
     }
   } else if(ld_stat == "Dp") {
     D0 = 1
@@ -181,7 +186,7 @@ fit_func <- function(x, fit_level) {
     # Fit LD model
     init_vals <- runif(3)
     if(ld_stat == 'Dp') {
-      init_vals[1] = runif(1,5,15)
+      init_vals[1] = runif(1,10,20)
       par <- data.frame(init=init_vals, low_lim=c(0,0,0), up_lim=c(Inf,1,1))
     } else { # r2 and r2pear
       init_vals[1] = runif(1,0,0.1)
@@ -191,10 +196,10 @@ fit_func <- function(x, fit_level) {
     if(fit_level > 1) optim_tmp <- append(optim_tmp, list("Nelder-Mead" = optim(par$init, fit_eval, obs_data=x, method="Nelder-Mead")) )
     if(fit_level > 2) optim_tmp <- append(optim_tmp, list("L-BFGS-B" = optim(par$init, fit_eval, obs_data=x, method="L-BFGS-B", lower=par$low_lim, upper=par$up_lim)) )
   }
-
   if(opt$debug) str(optim_tmp)
+
   # If not using the theoretical r2 decay curve (with r2h and r2l)
-  if(!theor_r2)
+  if(opt$n_ind > 0)
     if(ld_stat != 'Dp') optim_tmp <- lapply(optim_tmp, function(x){x$par[2]=x$par[3]=0;x})
   
   # Filter out runs that not-converged and/or with out-of-bound parameters
@@ -203,7 +208,7 @@ fit_func <- function(x, fit_level) {
                                   x$par[1] >= par$low_lim[1] & x$par[1] <= par$up_lim[1] & 
                                   x$par[2] >= par$low_lim[2] & x$par[2] <= par$up_lim[2] &
                                   x$par[3] >= par$low_lim[3] & x$par[3] <= par$up_lim[3] &
-				  x$par[2] >= x$par[3]}, optim_tmp)
+                                  x$par[2] >= x$par[3]}, optim_tmp)
   
   # Pick best run
   optim_tmp <- optim_tmp[order(sapply(optim_tmp,'[[',2))[1]]
@@ -228,21 +233,29 @@ if(opt$fit_level > 0) {
     boot_fit <- as.data.frame(as.matrix(aggregate(cbind(V1,V2,V3) ~ File+LD, boot_rep_fit, quantile, probs=c(0.025,0.975), names=FALSE)), stringsAsFactors=FALSE)
     all_fit <- merge(optim_fit, boot_fit, sort=FALSE)
     optim_data <- ddply(all_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"]), ci_l=ld_exp(x[,c("V1.2","V2.1","V3.1")], grid, x[,"LD"]), ci_u=ld_exp(x[,c("V1.1","V2.2","V3.2")], grid, x[,"LD"])) )
+    # Print LOG
+    print(all_fit)
   } else {
     optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"])) )
+    # Print LOG
+    print(optim_fit)
   }
   # Merge data together with extra info from input
   fit_data <- merge(ld_files, optim_data, sort=FALSE)
+  # Print DEBUG
+  if(opt$debug)
+    print(head(fit_data))
 }
-# Print 
-print(optim_fit)
-if(opt$debug)
-  print(head(fit_data))
 
 
 
 ### Create base plot
-plot <- ggplot() + xlim(0, opt$plot_x_lim) + theme(panel.spacing=unit(1,"lines")) + ylab("Linkage Disequilibrium")
+plot <- ggplot() + 
+  theme(panel.spacing=unit(1,"lines")) +
+  xlim(0, opt$plot_x_lim) + 
+  ylab("Linkage Disequilibrium") +
+  xlab("Distance")
+
 if(!is.null(opt$plot_wrap_formula)) {
   if(opt$plot_wrap) {
     #cat('# WRAP mode', fill=TRUE)
