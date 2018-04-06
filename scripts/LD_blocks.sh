@@ -39,7 +39,11 @@ rownames(m) <- colnames(m)
 m <- m[mixedorder(rownames(m)),mixedorder(colnames(m))]
 id <- rownames(m)
 dist <- as.numeric(sub(".*:","",id))
-LDheatmap(m, genetic.distances=dist, SNP.name=id, color="blueToRed")
+
+# Save plot
+pdf(width=10, height=10)
+LDheatmap(m, genetic.distances=dist, SNP.name=id, geneMapLabelX=0.75, geneMapLabelY=0.25, color="blueToRed")
+x <- dev.off()
 EOF
 
 # Re-name file
