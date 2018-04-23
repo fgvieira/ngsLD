@@ -1,6 +1,6 @@
 #!/bin/env Rscript
 
-#FileName: fit_LDdecay.R v1.0.3
+#FileName: fit_LDdecay.R v1.0.4
 #Author: "Filipe G. Vieira (fgarrettvieira _at_ gmail [dot] com)"
 #Author: "Emma Fox (e.fox16 _at_ imperial [dot] ac [dot] uk)"
 
@@ -62,8 +62,7 @@ colnames(ld_files)[1] <- "File"
 for (id in colnames(ld_files))
     ld_files[,id] <- factor(ld_files[,id], unique(ld_files[,id]), ordered=TRUE)
 n_files <- nrow(ld_files)
-if(opt$debug)
-  print(ld_files)
+if(opt$debug) print(ld_files)
 
 # Parse LD stats to plot
 if(!is.null(opt$ld))
@@ -98,9 +97,11 @@ if(!is.null(opt$plot_wrap_formula))
   opt$plot_wrap_formula <- as.formula(opt$plot_wrap_formula)
 
 # Set output file name (if not defined)
-if(is.null(opt$out))
+if(is.null(opt$out)){
+  if(is.null(opt$ld_files))
+    stop('Output file name required, when reading LD files from STDIN')
   opt$out <- paste(basename(file_path_sans_ext(opt$ld_files)),".pdf", sep = "")
-
+}
 
 
 ### Load LD data
@@ -109,8 +110,7 @@ ld_data <- data.frame()
 for (i in 1:n_files) {
   ld_file <- as.character(ld_files$File[i])
   # Read point data
-  if(opt$debug)
-    cat("Reading file:", ld_file, fill=TRUE)
+  if(opt$debug) cat("Reading file:", ld_file, fill=TRUE)
   tmp_data <- read.table(gzfile(ld_file), sep="\t", quote="\"", dec=".")[-(1:(opt$col-1))]
   if(ncol(tmp_data) < 5)
     stop('Invalid LD file format.\n', call.=opt$debug)
@@ -137,8 +137,7 @@ ld_data <- merge(ld_files, ld_data, by="File", sort=FALSE)
 # 
 n_groups <- length(unique(ld_data[,opt$plot_group]))
 n_plots <- n_files * n_ld / n_groups
-if(opt$debug)
-  print(head(ld_data))
+if(opt$debug) print(head(ld_data))
 
 
 
@@ -231,20 +230,18 @@ if(opt$fit_level > 0) {
       boot_rep_fit <- rbind(boot_rep_fit, data.frame(ddply(ld_bootdata, .(File,LD), fit_func, fit_level=opt$fit_level), Rep=b))
     }
     boot_fit <- as.data.frame(as.matrix(aggregate(cbind(V1,V2,V3) ~ File+LD, boot_rep_fit, quantile, probs=c(0.025,0.975), names=FALSE)), stringsAsFactors=FALSE)
-    all_fit <- merge(optim_fit, boot_fit, sort=FALSE)
-    optim_data <- ddply(all_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"]), ci_l=ld_exp(x[,c("V1.2","V2.1","V3.1")], grid, x[,"LD"]), ci_u=ld_exp(x[,c("V1.1","V2.2","V3.2")], grid, x[,"LD"])) )
-    # Print LOG
-    print(all_fit)
+    optim_fit <- merge(optim_fit, boot_fit, sort=FALSE)
+    optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"]), ci_l=ld_exp(x[,c("V1.2","V2.1","V3.1")], grid, x[,"LD"]), ci_u=ld_exp(x[,c("V1.1","V2.2","V3.2")], grid, x[,"LD"])) )
   } else {
     optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"])) )
-    # Print LOG
-    print(optim_fit)
   }
+  # Print best FIT parameters
+  print(optim_fit)
+
   # Merge data together with extra info from input
   fit_data <- merge(ld_files, optim_data, sort=FALSE)
-  # Print DEBUG
-  if(opt$debug)
-    print(head(fit_data))
+  if(opt$debug) 
+    print(head(fit_data, n=10))
 }
 
 
@@ -268,7 +265,7 @@ if(!is.null(opt$plot_wrap_formula)) {
 
 # Add LD decay fit CI
 if(opt$fit_boot > 0)
-  plot <- plot + geom_ribbon(data=fit_data, aes(x=Dist,ymin=ci_l,ymax=ci_u), alpha=0.2)
+  plot <- plot + geom_ribbon(data=fit_data, aes_string(x="Dist",ymin="ci_l",ymax="ci_u",group=opt$plot_group,fill=opt$plot_group), alpha=0.2)
 
 # Add data points
 if(opt$plot_data){
