@@ -1,6 +1,6 @@
 #!/bin/env Rscript
 
-#FileName: fit_LDdecay.R v1.0.4
+#FileName: fit_LDdecay.R v1.0.5
 #Author: "Filipe G. Vieira (fgarrettvieira _at_ gmail [dot] com)"
 #Author: "Emma Fox (e.fox16 _at_ imperial [dot] ac [dot] uk)"
 
@@ -26,6 +26,7 @@ option_list <- list(
   make_option(c('--col'), action='store', type='numeric', default=3, help='Which column is distance between sites? [%default]'),
   make_option(c('--ld'), action='store', type='character', default="r2", help='Which LD stats to plot (r2pear, D, Dp, r2) [%default]'),
   make_option(c('--n_ind'), action='store', type='numeric', default=0, help='How many individuals in the sample (for r^2 fitting correction)?'),
+  make_option(c('--recomb_rate'), action='store', type='numeric', default=NULL, help='Recombination rate to calculate genetic distances (it is assumed to be constant)'),
   make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis. [%default]'),
   make_option(c('--fit_boot'), action='store', type='numeric', default=0, help='Number of bootstrap replicates for fitting CI. [%default]'),
   make_option(c('--fit_bin_size'), action='store', type='numeric', default=250, help='Bin data into fixed-sized windows and use the average for fitting. [default %default bps]'),
@@ -118,9 +119,13 @@ for (i in 1:n_files) {
   tmp_data <- tmp_data[, which(names(tmp_data) %in% c("Dist",opt$ld))]
   # Filter by minimum distance
   tmp_data <- tmp_data[which(tmp_data$Dist < opt$max_kb_dist*1000),]
+  # Calculate genetic distances, according to Haldane's formula (assumes constant rate across all dataset)
+  if(!is.null(opt$recomb_rate))
+    tmp_data$Dist <- (1 - (1 - opt$recomb_rate)^(tmp_data$Dist))/2
   # Bin data
   if(opt$fit_bin_size > 1) {
-    tmp_data$Dist <- as.integer(tmp_data$Dist / opt$fit_bin_size) * opt$fit_bin_size
+    breaks <- seq(0, max(tmp_data$Dist)+opt$fit_bin_size, opt$fit_bin_size)
+    tmp_data$Dist <- cut(tmp_data$Dist, breaks, head(breaks, -1))
     tmp_data <- aggregate(. ~ Dist, data=tmp_data, median)
   }
   tmp_data$File <- ld_file
@@ -153,9 +158,9 @@ ld_exp <- function(par, dist, ld_stat) {
       # LD decay curve adjusted for finite samples sizes
       ((10+C) / ((2+C)*(11+C))) * (1+((3+C)*(12+12*C+C^2))/(opt$n_ind*(2+C)*(11+C)))
     }else{
-      # Theoretical expectation
+      # Theoretical expectation under to drift
       #1 / (1 + C)
-      # Theoretical expectation with r2h and r2l
+      # Theoretical expectation with r2_high and r2_low
       (r2h - r2l) / (1 + C) + r2l
     }
   } else if(ld_stat == "Dp") {
@@ -274,7 +279,8 @@ if(opt$plot_data){
     stop("Invalid `ld_data` format.\n", call.=opt$debug)
   # Bin data
   if(opt$plot_bin_size > 1) {
-    ld_data$Dist <- as.integer(ld_data$Dist / opt$plot_bin_size) * opt$plot_bin_size
+    breaks <- seq(0, max(ld_data$Dist)+opt$plot_bin_size, opt$plot_bin_size)
+    ld_data$Dist <- cut(ld_data$Dist, breaks, head(breaks, -1))
     ld_data <- aggregate(value ~ ., data=ld_data, median)
   }
   # Add points
@@ -297,15 +303,17 @@ if(length(opt$ld) > 0) {
 n_plots <- length(unique(ggplot_build(plot)$data[[1]]$PANEL))
 if(!is.null(opt$plot_wrap_formula)) {
   par <- dcast(fit_data, opt$plot_wrap_formula, length, fill=0)
+  rownames(par) <- par[,1]
+  par <- par[,-1, drop=FALSE]
 } else {
-  par <- matrix(ncol=2)
+  par <- matrix(ncol=1)
 }
 if(opt$debug){
   cat(n_files, n_ld, n_groups, n_plots, fill=TRUE)
-  cat(nrow(par), ncol(par)-1, fill=TRUE)
+  cat(nrow(par), ncol(par), fill=TRUE)
 }
 plot_height <- opt$plot_size[1] * nrow(par)
-plot_width <- opt$plot_size[2] * (ncol(par)-1)
+plot_width <- opt$plot_size[2] * ncol(par)
 
 
 
