@@ -4,7 +4,12 @@
 
 ### Citation
 
-`ngsLD` is still work under progress...
+`ngsLD` has been submitted to [Bioinformatics](http://bioinformatics.oxfordjournals.org), so please cite it if you use it in your work:
+
+    Fox EA, Wright AE, Fumagalli M, and Vieira FG
+    ngsLD: evaluating linkage disequilibrium using genotype likelihoods
+    Bioinformatics (2018) ??: ????-????
+
 
 ### Installation
 
