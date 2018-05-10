@@ -16,13 +16,13 @@
 `ngsLD` can be easily installed but has some external dependencies:
 
 * Mandatory:
- * `gcc`: >= 4.9.2 tested on Debian 7.8 (wheezy)
- * `zlib`: v1.2.7 tested on Debian 7.8 (wheezy)
- * `gsl` : v1.15 tested on Debian 7.8 (wheezy)
+  * `gcc`: >= 4.9.2 tested on Debian 7.8 (wheezy)
+  * `zlib`: v1.2.7 tested on Debian 7.8 (wheezy)
+  * `gsl` : v1.15 tested on Debian 7.8 (wheezy)
 * Optional (only needed for testing or auxilliary scripts):
- * `md5sum`
- * `Perl` packages: `Getopt::Long`, `Graph::Easy`, `Math::BigFloat`, and `IO::Zlib`
- * `R` packages: `optparse`, `tools`, `ggplot2`, `reshape2`, `plyr`, `gtools`, and `LDheatmap`
+  * `md5sum`
+  * `Perl` packages: `Getopt::Long`, `Graph::Easy`, `Math::BigFloat`, and `IO::Zlib`
+  * `R` packages: `optparse`, `tools`, `ggplot2`, `reshape2`, `plyr`, `gtools`, and `LDheatmap`
 
 To install the entire package just download the source code:
 
