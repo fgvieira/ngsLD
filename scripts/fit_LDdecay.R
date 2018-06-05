@@ -1,6 +1,6 @@
 #!/bin/env Rscript
 
-#FileName: fit_LDdecay.R v1.0.5
+#FileName: fit_LDdecay.R v1.0.6
 #Author: "Filipe G. Vieira (fgarrettvieira _at_ gmail [dot] com)"
 #Author: "Emma Fox (e.fox16 _at_ imperial [dot] ac [dot] uk)"
 
@@ -113,9 +113,12 @@ for (i in 1:n_files) {
   # Read point data
   if(opt$debug) cat("Reading file:", ld_file, fill=TRUE)
   tmp_data <- read.table(gzfile(ld_file), sep="\t", quote="\"", dec=".")[-(1:(opt$col-1))]
+  # Check if file is valid
   if(ncol(tmp_data) < 5)
     stop('Invalid LD file format.\n', call.=opt$debug)
+  # Add column labels
   colnames(tmp_data) <- header
+  # Extract relevant columns
   tmp_data <- tmp_data[, which(names(tmp_data) %in% c("Dist",opt$ld))]
   # Filter by minimum distance
   tmp_data <- tmp_data[which(tmp_data$Dist < opt$max_kb_dist*1000),]
@@ -133,6 +136,8 @@ for (i in 1:n_files) {
 }
 # Clean-up
 rm(tmp_data)
+# Remove factor in Dist
+ld_data$Dist <- as.numeric(levels(ld_data$Dist))[ld_data$Dist]
 # Set maximum X-axis
 opt$plot_x_lim = opt$plot_x_lim * 1000
 if(opt$plot_x_lim == 0)
