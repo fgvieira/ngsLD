@@ -95,7 +95,12 @@ If you are interested on the rate of LD decay, you can fit a distribution to you
 * `--ld_files FILE`: file with list of LD files to fit and plot (if ommited, can be read from STDIN)
 * `--out`: Name of output plot
 
-For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`).
+For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`). The shape of the decay curve can give valuable insight into the sample's biology (e.g.):
+* `Intersect` (high): smaller Ne, natural selection (local LD), Non-random mating
+* `Decay Rate` (high): smaller Ne, high mutation rate, high recomb rate, random mating
+* `Asymptote` (high): population structure, small sample size
+
+NOTE: Please keep in mind that these are just general trends, and that it all depends on the biologu/genetics of the sample. Since LD is influenced by many factors, it is usually less straightforward to derive exact predictions from it.
 
 ##### LD blocks
 To plot LD blocks, we also provide a small script as an example for how it can be easily done in `R` using the `LDheatmap` package (by default, ![r^2](http://mathurl.com/ya2uo8sp.png) is plotted).
