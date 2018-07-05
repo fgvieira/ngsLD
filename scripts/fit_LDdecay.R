@@ -1,6 +1,6 @@
 #!/bin/env Rscript
 
-#FileName: fit_LDdecay.R v1.0.6
+#FileName: fit_LDdecay.R v1.0.7
 #Author: "Filipe G. Vieira (fgarrettvieira _at_ gmail [dot] com)"
 #Author: "Emma Fox (e.fox16 _at_ imperial [dot] ac [dot] uk)"
 
@@ -13,10 +13,7 @@ library(plyr)
 options(width = 200) 
 
 
-# Calculates the mean of the top 95% quantile (might be usefull if wanted to test GWAS power)
-quant_mean <- function(x, q=0.95) {
-  mean(x[which(x > quantile(x, q))])
-}
+
 
 
 ##SPECIFY ARGUMENTS
@@ -26,10 +23,11 @@ option_list <- list(
   make_option(c('--col'), action='store', type='numeric', default=3, help='Which column is distance between sites? [%default]'),
   make_option(c('--ld'), action='store', type='character', default="r2", help='Which LD stats to plot (r2pear, D, Dp, r2) [%default]'),
   make_option(c('--n_ind'), action='store', type='numeric', default=0, help='How many individuals in the sample (for r^2 fitting correction)?'),
-  make_option(c('--recomb_rate'), action='store', type='numeric', default=NULL, help='Recombination rate to calculate genetic distances (it is assumed to be constant)'),
+  make_option(c('--recomb_rate'), action='store', type='numeric', default=NULL, help='Recombination rate to calculate genetic distances (it is assumed to be constant) from physical distances.'),
   make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis. [%default]'),
   make_option(c('--fit_boot'), action='store', type='numeric', default=0, help='Number of bootstrap replicates for fitting CI. [%default]'),
   make_option(c('--fit_bin_size'), action='store', type='numeric', default=250, help='Bin data into fixed-sized windows and use the average for fitting. [default %default bps]'),
+  make_option(c('--fit_bin_quant'), action='store', type='numeric', default=50, help='Quantile to represent the bins (e.g. 50 = median). [%default]'),
   make_option(c('--fit_level'), action='store', type='numeric', default=1, help='Fitting level 0) no fitting, best of 1) Nelder-Mead, 2) and BFGS, 3) and L-BFGS-B). [%default]'),
   make_option(c('--plot_group'), action='store', type='character', default='File', help='Group variable'),
   make_option(c('--plot_data'), action='store_true', type='logical', default=FALSE, help='Also plot data points?'),
@@ -129,7 +127,7 @@ for (i in 1:n_files) {
   if(opt$fit_bin_size > 1) {
     breaks <- seq(0, max(tmp_data$Dist)+opt$fit_bin_size, opt$fit_bin_size)
     tmp_data$Dist <- cut(tmp_data$Dist, breaks, head(breaks, -1))
-    tmp_data <- aggregate(. ~ Dist, data=tmp_data, median)
+    tmp_data <- aggregate(. ~ Dist, data=tmp_data, quantile, probs=opt$fit_bin_quant/100)
   }
   tmp_data$File <- ld_file
   ld_data <- rbind(ld_data, melt(tmp_data, c("File","Dist"), variable.name="LD", na.rm=TRUE))
@@ -286,7 +284,7 @@ if(opt$plot_data){
   if(opt$plot_bin_size > 1) {
     breaks <- seq(0, max(ld_data$Dist)+opt$plot_bin_size, opt$plot_bin_size)
     ld_data$Dist <- cut(ld_data$Dist, breaks, head(breaks, -1))
-    ld_data <- aggregate(value ~ ., data=ld_data, median)
+    ld_data <- aggregate(value ~ ., data=ld_data, quantile, probs=opt$fit_bin_quant/100)
   }
   # Add points
   plot <- plot + geom_point(data=ld_data, aes_string(x="Dist",y="value",colour=opt$plot_group), size=0.05, alpha=0.2)
