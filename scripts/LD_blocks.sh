@@ -26,25 +26,22 @@ library(gtools)
 library(reshape2)
 library(LDheatmap)
 
-ld = "r2"
-
 r <- read.table("$TMP_FILE", header=TRUE, stringsAsFactors=FALSE)
 id <- unique(mixedsort(c(r[,"snp1"],r[,"snp2"])))
 posStart <- head(id,1)
 posEnd <- tail(id,1)
 r <- rbind(r, c(posStart,posStart,0,NA,NA,NA,NA), c(posEnd,posEnd,0,NA,NA,NA,NA))
 
-m <- apply(acast(r, snp1 ~ snp2, value.var=ld, drop=FALSE),2,as.numeric)
-rownames(m) <- colnames(m)
-m <- m[mixedorder(rownames(m)),mixedorder(colnames(m))]
-id <- rownames(m)
-dist <- as.numeric(sub(".*:","",id))
+for (ld in c("r2","Dp")) {
+  m <- apply(acast(r, snp1 ~ snp2, value.var=ld, drop=FALSE),2,as.numeric)
+  rownames(m) <- colnames(m)
+  m <- m[mixedorder(rownames(m)),mixedorder(colnames(m))]
+  id <- rownames(m)
+  dist <- as.numeric(sub(".*:","",id))
 
-# Save plot
-pdf(width=10, height=10)
-LDheatmap(m, genetic.distances=dist, SNP.name=id, geneMapLabelX=0.75, geneMapLabelY=0.25, color="blueToRed")
-x <- dev.off()
+  # Save plot
+  pdf(paste("LD_blocks", ld,"pdf", sep="."), width=10, height=10)
+  LDheatmap(m, genetic.distances=dist, SNP.name=id, geneMapLabelX=0.75, geneMapLabelY=0.25, color="blueToRed", LDmeasure=ld)
+  x <- dev.off()
+}
 EOF
-
-# Re-name file
-mv Rplots.pdf LD_blocks.pdf
