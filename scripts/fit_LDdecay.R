@@ -1,6 +1,6 @@
 #!/bin/env Rscript
 
-#FileName: fit_LDdecay.R v1.0.7
+#FileName: fit_LDdecay.R v1.0.8
 #Author: "Filipe G. Vieira (fgarrettvieira _at_ gmail [dot] com)"
 #Author: "Emma Fox (e.fox16 _at_ imperial [dot] ac [dot] uk)"
 
@@ -22,17 +22,19 @@ option_list <- list(
   make_option(c('--header'), action='store_true', type='logical', default=FALSE, help='Input file has header'),
   make_option(c('--col'), action='store', type='numeric', default=3, help='Which column is distance between sites? [%default]'),
   make_option(c('--ld'), action='store', type='character', default="r2", help='Which LD stats to plot (r2pear, D, Dp, r2) [%default]'),
-  make_option(c('--n_ind'), action='store', type='numeric', default=0, help='How many individuals in the sample (for r^2 fitting correction)?'),
-  make_option(c('--recomb_rate'), action='store', type='numeric', default=NULL, help='Recombination rate to calculate genetic distances (it is assumed to be constant) from physical distances.'),
+  make_option(c('--n_ind'), action='store', type='numeric', default=0, help='How many individuals per-sample (for r^2 fitting correction)?'),
+  make_option(c('-r', '--use_recomb_rate'), action='store_true', type='logical', default=FALSE, help='Assume constant recombination rate. [%default]'),
+  make_option(c('--recomb_rate'), action='store', type='numeric', default=1, help='Recombination rate (or probability of recombination between adjacent sites in cM/Mb) to calculate genetic distances from physical distances. It is assumed to be constant throughout the whole dataset and, for human datasets, a common rule-of-thumb value is 1cM/Mb (1e-6). [%default]'),
   make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis. [%default]'),
   make_option(c('--fit_boot'), action='store', type='numeric', default=0, help='Number of bootstrap replicates for fitting CI. [%default]'),
   make_option(c('--fit_bin_size'), action='store', type='numeric', default=250, help='Bin data into fixed-sized windows and use the average for fitting. [default %default bps]'),
-  make_option(c('--fit_bin_quant'), action='store', type='numeric', default=50, help='Quantile to represent the bins (e.g. 50 = median). [%default]'),
+  make_option(c('--fit_bin_quant'), action='store', type='numeric', default=0, help='Quantile to represent the bins (e.g. 0 = mean, 50 = median). [%default]'),
   make_option(c('--fit_level'), action='store', type='numeric', default=1, help='Fitting level 0) no fitting, best of 1) Nelder-Mead, 2) and BFGS, 3) and L-BFGS-B). [%default]'),
   make_option(c('--plot_group'), action='store', type='character', default='File', help='Group variable'),
   make_option(c('--plot_data'), action='store_true', type='logical', default=FALSE, help='Also plot data points?'),
   make_option(c('--plot_bin_size'), action='store', type='numeric', default=0, help='Bin data into fixed-sized windows and use the average for plotting. [default %default bps]'),
-  make_option(c('--plot_x_lim'), action='store', type='numeric', default=0, help='X-axis plot limit (in kb). [%default]'),
+  make_option(c('--plot_x_lim'), action='store', type='numeric', default=NULL, help='X-axis plot limit (in kb). [%default]'),
+  make_option(c('--plot_y_lim'), action='store', type='numeric', default=NULL, help='Y-axis plot limit. [%default]'),
   make_option(c('--plot_axis_scales'), action='store', type='character', default='fixed', help='Plot axis scales: fixed (default), free, free_x or free_y'),
   make_option(c('--plot_size'), action='store', type='character', default='1,2', help='Plot size (height,width). [%default]'),
   make_option(c('--plot_scale'), action='store', type='numeric', default=1.5, help='Plot scale. [%default]'),
@@ -61,7 +63,8 @@ colnames(ld_files)[1] <- "File"
 for (id in colnames(ld_files))
     ld_files[,id] <- factor(ld_files[,id], unique(ld_files[,id]), ordered=TRUE)
 n_files <- nrow(ld_files)
-if(opt$debug) print(ld_files)
+if(opt$debug)
+  print(ld_files)
 
 # Parse LD stats to plot
 if(!is.null(opt$ld))
@@ -73,6 +76,8 @@ n_ld = length(opt$ld)
 # Check if number of individuals was specified
 if(opt$n_ind < 0)
   stop("Number of individuals must be greater than zero", call.=opt$debug)
+if(opt$n_ind > 0 && length(unique(ld_files$File)) > 1)
+  warning("Sample size for correction will be assumed equal for all samples!", call.=opt$debug)
 if(!any(opt$ld %in% c("r2","r2pear")) && opt$n_ind)
   stop("Number of individuals is only used for r^2 fitting", call.=opt$debug)
 for(i in opt$ld)
@@ -121,13 +126,17 @@ for (i in 1:n_files) {
   # Filter by minimum distance
   tmp_data <- tmp_data[which(tmp_data$Dist < opt$max_kb_dist*1000),]
   # Calculate genetic distances, according to Haldane's formula (assumes constant rate across all dataset)
-  if(!is.null(opt$recomb_rate))
-    tmp_data$Dist <- (1 - (1 - opt$recomb_rate)^(tmp_data$Dist))/2
+  if(opt$use_recomb_rate && !is.null(opt$recomb_rate))
+    tmp_data$Dist <- (1 - (1 - opt$recomb_rate*0.01/1e6)^(tmp_data$Dist))/2
   # Bin data
   if(opt$fit_bin_size > 1) {
     breaks <- seq(0, max(tmp_data$Dist)+opt$fit_bin_size, opt$fit_bin_size)
     tmp_data$Dist <- cut(tmp_data$Dist, breaks, head(breaks, -1))
-    tmp_data <- aggregate(. ~ Dist, data=tmp_data, quantile, probs=opt$fit_bin_quant/100)
+    if(opt$fit_bin_quant > 0) {
+      tmp_data <- aggregate(. ~ Dist, data=tmp_data, quantile, probs=opt$fit_bin_quant/100)
+    } else {
+      tmp_data <- aggregate(. ~ Dist, data=tmp_data, mean)
+    }
   }
   tmp_data$File <- ld_file
   ld_data <- rbind(ld_data, melt(tmp_data, c("File","Dist"), variable.name="LD", na.rm=TRUE))
@@ -137,15 +146,21 @@ rm(tmp_data)
 # Remove factor in Dist
 ld_data$Dist <- as.numeric(levels(ld_data$Dist))[ld_data$Dist]
 # Set maximum X-axis
-opt$plot_x_lim = opt$plot_x_lim * 1000
-if(opt$plot_x_lim == 0)
+if(is.null(opt$plot_x_lim)) {
   opt$plot_x_lim = max(ld_data$Dist)
+} else {
+  opt$plot_x_lim = opt$plot_x_lim * 1000
+}
+# Set maximum Y-axis
+if(!is.null(opt$plot_y_lim))
+  opt$plot_y_lim <- c(0, opt$plot_y_lim)
 # Add extra info
 ld_data <- merge(ld_files, ld_data, by="File", sort=FALSE)
 # 
 n_groups <- length(unique(ld_data[,opt$plot_group]))
 n_plots <- n_files * n_ld / n_groups
-if(opt$debug) print(head(ld_data))
+if(opt$debug)
+  print(head(ld_data))
 
 
 
@@ -171,7 +186,7 @@ ld_exp <- function(par, dist, ld_stat) {
     t = par[1]
     Dh = par[2]
     Dl = par[3]
-    Dl + (Dh-Dl) * D0 * (1 - dist/1000000)^t # Assuming 1cm = 1Mb
+    Dl + (Dh-Dl) * D0 * (1 - dist * opt$recomb_rate/1e6)^t
   }
 }
 # Evaluation function
@@ -210,7 +225,7 @@ fit_func <- function(x, fit_level) {
     if(ld_stat != 'Dp') optim_tmp <- lapply(optim_tmp, function(x){x$par[2]=x$par[3]=0;x})
   
   # Filter out runs that not-converged and/or with out-of-bound parameters
-  # Columns stand for: par1, par2, par3, score, counts, convergence, message
+  # Columns stand for: par1 (rate), par2 (high), par3 (low), score, counts, convergence, message
   optim_tmp <- Filter(function(x){x$convergence == 0 &
                                   x$par[1] >= par$low_lim[1] & x$par[1] <= par$up_lim[1] & 
                                   x$par[2] >= par$low_lim[2] & x$par[2] <= par$up_lim[2] &
@@ -244,36 +259,40 @@ if(opt$fit_level > 0) {
     optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"])) )
   }
   # Print best FIT parameters
+  optim_fit <- plyr::rename(optim_fit, c("V1"="DecayRate","V2"="LDmin","V3"="LDmax","V1.1"="DecayRate_CI.u","V1.2"="DecayRate_CI.l","V2.1"="LDmin_CI.l","V2.2"="LDmin_CI.u","V3.1"="LDmax_CI.l","V3.2"="LDmax_CI.u"), warn_missing=FALSE)
   print(optim_fit)
 
   # Merge data together with extra info from input
   fit_data <- merge(ld_files, optim_data, sort=FALSE)
-  if(opt$debug) 
+  if(opt$debug)
     print(head(fit_data, n=10))
 }
 
 
 
 ### Create base plot
+cat("==> Plotting data...", fill=TRUE)
 plot <- ggplot() + 
   theme(panel.spacing=unit(1,"lines")) +
-  xlim(0, opt$plot_x_lim) + 
+  coord_cartesian(xlim=c(0,opt$plot_x_lim), ylim=opt$plot_y_lim) +
   ylab("Linkage Disequilibrium") +
   xlab("Distance")
 
 if(!is.null(opt$plot_wrap_formula)) {
   if(opt$plot_wrap) {
-    #cat('# WRAP mode', fill=TRUE)
     plot <- plot + facet_wrap(opt$plot_wrap_formula, ncol=opt$plot_wrap, scales=opt$plot_axis_scales)
   } else {
-    #cat('# GRID mode', fill=TRUE)
     plot <- plot + facet_grid(opt$plot_wrap_formula, scales=opt$plot_axis_scales)
   }
 }
 
 # Add LD decay fit CI
-if(opt$fit_boot > 0)
-  plot <- plot + geom_ribbon(data=fit_data, aes_string(x="Dist",ymin="ci_l",ymax="ci_u",group=opt$plot_group,fill=opt$plot_group), alpha=0.2)
+if(opt$fit_boot > 0) {
+  grp <- NULL
+  if(n_files == n_groups)
+    grp <- opt$plot_group
+  plot <- plot + geom_ribbon(data=fit_data, aes_string(x="Dist",ymin="ci_l",ymax="ci_u",group=opt$plot_group,fill=grp), alpha=0.2)
+}
 
 # Add data points
 if(opt$plot_data){
@@ -284,8 +303,15 @@ if(opt$plot_data){
   if(opt$plot_bin_size > 1) {
     breaks <- seq(0, max(ld_data$Dist)+opt$plot_bin_size, opt$plot_bin_size)
     ld_data$Dist <- cut(ld_data$Dist, breaks, head(breaks, -1))
-    ld_data <- aggregate(value ~ ., data=ld_data, quantile, probs=opt$fit_bin_quant/100)
+    ld_data$Dist <- as.numeric(levels(ld_data$Dist))[ld_data$Dist]
+    if(opt$fit_bin_quant > 0) {
+      ld_data <- aggregate(value ~ ., data=ld_data, quantile, probs=opt$fit_bin_quant/100)
+    } else {
+      ld_data <- aggregate(value ~ ., data=ld_data, mean)
+    }
   }
+  if(opt$debug)
+    print(head(ld_data, n=10))
   # Add points
   plot <- plot + geom_point(data=ld_data, aes_string(x="Dist",y="value",colour=opt$plot_group), size=0.05, alpha=0.2)
 }
@@ -294,8 +320,10 @@ if(opt$plot_data){
 if(length(opt$ld) > 0) {
   header <- colnames(fit_data)
   grp <- header[!header %in% unique(c(as.character(opt$plot_wrap_formula), opt$plot_group, "Dist", "value", "File", "ci_l", "ci_u"))]
+  if(opt$debug)
+    print(grp)
   if(length(grp) == 0) grp <- NULL
-  plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",group=opt$plot_group,colour=opt$plot_group,linetype=grp))
+  plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",colour=opt$plot_group,linetype=grp))
   if(opt$plot_data)
     plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",group=opt$plot_group), size=0.1, alpha=0.2, colour="black")
 }
