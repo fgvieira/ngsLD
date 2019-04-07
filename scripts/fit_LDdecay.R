@@ -39,7 +39,9 @@ option_list <- list(
   make_option(c('--plot_size'), action='store', type='character', default='1,2', help='Plot size (height,width). [%default]'),
   make_option(c('--plot_scale'), action='store', type='numeric', default=1.5, help='Plot scale. [%default]'),
   make_option(c('--plot_wrap'), action='store', type='numeric', default=0, help='Plot in WRAP with X columns (default in GRID)'),
-  make_option(c('--plot_no_legend'), action='store_true', type='logical', default=FALSE, help='REmove legend from plot'),
+  make_option(c('--plot_no_legend'), action='store_true', type='logical', default=FALSE, help='Remove legend from plot'),
+  make_option(c('--plot_shapes'), action='store_true', type='logical', default=FALSE, help='Use also shapes (apart from colors)'),
+  make_option(c('--plot_line_smooth'), action='store', type='numeric', default=1000, help='LD decay curve smoothness'),
   make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default=NULL, help='Plot formula for WRAP. [%default]'),
   make_option(c('-o','--out'), action='store', type='character', default=NULL, help='Output file'),
   make_option(c('--seed'), action='store', type='numeric', default=NULL, help='Seed for random number generator'),
@@ -61,7 +63,7 @@ ld_files <- read.table(opt$ld_files, header=opt$header, stringsAsFactors=FALSE)
 colnames(ld_files)[1] <- "File"
 # Keep file list ordered
 for (id in colnames(ld_files))
-    ld_files[,id] <- factor(ld_files[,id], unique(ld_files[,id]), ordered=TRUE)
+  ld_files[,id] <- factor(ld_files[,id], unique(ld_files[,id]), ordered=TRUE)
 n_files <- nrow(ld_files)
 if(opt$debug)
   print(ld_files)
@@ -241,7 +243,8 @@ fit_func <- function(x, fit_level) {
 
 # Fit LD decay distribution
 if(opt$fit_level > 0) {
-  grid <- seq(1, opt$plot_x_lim, length=1000)
+  # Define line "resolution"
+  smooth <- seq(1, opt$plot_x_lim, length=opt$plot_line_smooth)
   # Full data
   optim_fit <- ddply(ld_data, .(File,LD), fit_func, fit_level=opt$fit_level)
 
@@ -254,12 +257,12 @@ if(opt$fit_level > 0) {
     }
     boot_fit <- as.data.frame(as.matrix(aggregate(cbind(V1,V2,V3) ~ File+LD, boot_rep_fit, quantile, probs=c(0.025,0.975), names=FALSE)), stringsAsFactors=FALSE)
     optim_fit <- merge(optim_fit, boot_fit, sort=FALSE)
-    optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"]), ci_l=ld_exp(x[,c("V1.2","V2.1","V3.1")], grid, x[,"LD"]), ci_u=ld_exp(x[,c("V1.1","V2.2","V3.2")], grid, x[,"LD"])) )
+    optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=smooth, value=ld_exp(x[,c("V1","V2","V3")], smooth, x[,"LD"]), ci_l=ld_exp(x[,c("V1.2","V2.1","V3.1")], smooth, x[,"LD"]), ci_u=ld_exp(x[,c("V1.1","V2.2","V3.2")], smooth, x[,"LD"])) )
   } else {
-    optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=grid, value=ld_exp(x[,c("V1","V2","V3")], grid, x[,"LD"])) )
+    optim_data <- ddply(optim_fit, .(File,LD), function(x) data.frame(LD=x[,"LD"], Dist=smooth, value=ld_exp(x[,c("V1","V2","V3")], smooth, x[,"LD"])) )
   }
   # Print best FIT parameters
-  optim_fit <- plyr::rename(optim_fit, c("V1"="DecayRate","V2"="LDmin","V3"="LDmax","V1.1"="DecayRate_CI.u","V1.2"="DecayRate_CI.l","V2.1"="LDmin_CI.l","V2.2"="LDmin_CI.u","V3.1"="LDmax_CI.l","V3.2"="LDmax_CI.u"), warn_missing=FALSE)
+  optim_fit <- plyr::rename(optim_fit, c("V1"="DecayRate","V2"="LDmax","V3"="LDmin","V1.1"="DecayRate_CI.u","V1.2"="DecayRate_CI.l","V2.1"="LDmax_CI.l","V2.2"="LDmax_CI.u","V3.1"="LDmin_CI.l","V3.2"="LDmin_CI.u"), warn_missing=FALSE)
   print(optim_fit)
 
   # Merge data together with extra info from input
@@ -318,14 +321,27 @@ if(opt$plot_data){
 
 # Add LD decay best fit
 if(length(opt$ld) > 0) {
-  header <- colnames(fit_data)
+  # Select fields that are variable
+  header <- names(which(lapply(lapply(fit_data, unique), length) > 1))
+  # Exclude non-relevant fields
   grp <- header[!header %in% unique(c(as.character(opt$plot_wrap_formula), opt$plot_group, "Dist", "value", "File", "ci_l", "ci_u"))]
-  if(opt$debug)
+  if(opt$debug) {
     print(grp)
+    print(opt$plot_group)
+  }
+  # Define line type
   if(length(grp) == 0) grp <- NULL
+  if(length(grp) > 1) stop("invalid number of linetype groups!")
   plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",colour=opt$plot_group,linetype=grp))
+  # If ploting data, add a thin black line to help see the line
   if(opt$plot_data)
-    plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",group=opt$plot_group), size=0.1, alpha=0.2, colour="black")
+    plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",colour=opt$plot_group), size=0.1, alpha=0.2, colour="black")
+  # If plotting, apart from linetypes, also shapes (for B/W or color-blind printing)
+  if(opt$plot_shape) {
+    smooth <- seq(1, opt$plot_x_lim, length=opt$plot_line_smooth)[seq(2,opt$plot_line_smooth,length=10)]
+    sample_fit_data <- subset(fit_data, Dist %in% smooth)
+    plot <- plot + geom_point(data=sample_fit_data, aes_string(x="Dist",y="value",colour=opt$plot_group,shape=opt$plot_group), size=0.75)
+  }
 }
 
 
