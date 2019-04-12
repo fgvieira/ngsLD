@@ -278,6 +278,7 @@ cat("==> Plotting data...", fill=TRUE)
 plot <- ggplot() + 
   theme(panel.spacing=unit(1,"lines")) +
   coord_cartesian(xlim=c(0,opt$plot_x_lim), ylim=opt$plot_y_lim) +
+  scale_colour_hue() +
   ylab("Linkage Disequilibrium") +
   xlab("Distance")
 
@@ -338,9 +339,9 @@ if(length(opt$ld) > 0) {
     plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",colour=opt$plot_group), size=0.1, alpha=0.2, colour="black")
   # If plotting, apart from linetypes, also shapes (for B/W or color-blind printing)
   if(opt$plot_shape) {
-    smooth <- seq(1, opt$plot_x_lim, length=opt$plot_line_smooth)[seq(2,opt$plot_line_smooth,length=10)]
+    smooth <- seq(1, opt$plot_x_lim, length=opt$plot_line_smooth)[seq(2,opt$plot_line_smooth,length=5)]
     sample_fit_data <- subset(fit_data, Dist %in% smooth)
-    plot <- plot + geom_point(data=sample_fit_data, aes_string(x="Dist",y="value",colour=opt$plot_group,shape=opt$plot_group), size=0.75)
+    plot <- plot + geom_point(data=sample_fit_data, aes_string(x="Dist",y="value",colour=opt$plot_group,shape=opt$plot_group))
   }
 }
 
