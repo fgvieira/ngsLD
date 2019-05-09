@@ -18,10 +18,10 @@
  *
 */
 
-#include<pthread.h>
+#include <pthread.h>
 #include "ngsLD.hpp"
 
-char const* version = "1.0.0";
+char const* version = "1.1.0";
 
 
 int main (int argc, char** argv) {
@@ -101,7 +101,7 @@ int main (int argc, char** argv) {
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Calculating MAF for all sites...\n");
   for(uint64_t s = 1; s <= pars->n_sites; s++)
-    pars->maf[s] = est_maf(pars->n_ind, pars->geno_lkl[s], (double*) NULL);
+    pars->maf[s] = est_maf(pars->n_ind, pars->geno_lkl[s], (double*) NULL, pars->ignore_miss_data);
   
   // Data pre-processing...
   for(uint64_t i = 0; i < pars->n_ind; i++)
@@ -233,7 +233,8 @@ void calc_pair_LD (void *pth){
   uint64_t s2 = s1;
   double dist = 0;
   double r2pear, D, Dp, r2;
-  double hap_freq[4];
+  double hap_freq[4], loglkl;
+  uint64_t n_ind_data, n_iter;
   static pthread_mutex_t printf_mutex;
 
   // Calc LD for pairs of SNPs < max_kb_dist
@@ -260,6 +261,9 @@ void calc_pair_LD (void *pth){
     if(draw_rnd(p->rnd_gen, 0, 1) > p->pars->rnd_sample)
       continue;
 
+    if(p->pars->verbose > 8)
+      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%lu\t%.0f\t%lu\t%f\t%f\t%f\n", s1, p->pars->labels[s1-1], s2, p->pars->labels[s2-1], p->pars->max_snp_dist, dist, p->pars->max_kb_dist*1000, p->pars->maf[s1], p->pars->maf[s2], p->pars->min_maf);
+
 
 
     // Calculate LD using expected genotypes
@@ -267,7 +271,7 @@ void calc_pair_LD (void *pth){
 
     // Calculate LD from haplotype frequencies (estimated through an EM)
     // Estimate haplotype frequencies
-    haplo_freq(hap_freq, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->maf[s1], p->pars->maf[s2], p->pars->n_ind, false);
+    haplo_freq(hap_freq, &loglkl, &n_ind_data, &n_iter, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->maf[s1], p->pars->maf[s2], p->pars->n_ind, p->pars->ignore_miss_data, false);
     // Allele frequencies
     double maf[2];
     maf[0] = 1 - (hap_freq[0] + hap_freq[1]);
@@ -302,15 +306,16 @@ void calc_pair_LD (void *pth){
 	    chi2 += pow(hap_freq[i]-exp_hap_freq[i],2)/exp_hap_freq[i];
 
       // Print extended output: sample_size, maf1, maf2, hap00, hap01, hap10, hap11, chi2, loglike, nIter
-      fprintf(p->pars->out_fh, "\t%lu\t%f\t%f\t%f\t%f\t%f\t%f\t%f",
-	      p->pars->n_ind,
+      fprintf(p->pars->out_fh, "\t%lu\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%lu",
+	      n_ind_data,
 	      p->pars->maf[s1],
 	      p->pars->maf[s2],
 	      hap_freq[0],
 	      hap_freq[1],
 	      hap_freq[2],
 	      hap_freq[3],
-	      chi2
+	      chi2,
+	      n_iter
 	      );
     }
     fprintf(p->pars->out_fh, "\n");

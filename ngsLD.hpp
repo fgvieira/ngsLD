@@ -19,6 +19,7 @@ typedef struct {
   uint64_t max_kb_dist;
   uint64_t max_snp_dist;
   double min_maf;
+  bool ignore_miss_data;
   bool call_geno;
   double N_thresh;
   double call_thresh;

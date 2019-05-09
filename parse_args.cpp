@@ -14,6 +14,7 @@ void init_pars(params *pars) {
   pars->max_kb_dist = 100;
   pars->max_snp_dist = 0;
   pars->min_maf = 0.001;
+  pars->ignore_miss_data = false;
   pars->call_geno = false;
   pars->N_thresh = 0;
   pars->call_thresh = 0;
@@ -41,6 +42,7 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
       {"max_kb_dist", required_argument, NULL, 'd'},
       {"max_snp_dist", required_argument, NULL, 'D'},
       {"min_maf", required_argument, NULL, 'f'},
+      {"ignore_miss_data", no_argument, NULL, 'm'},
       {"call_geno", no_argument, NULL, 'c'},
       {"N_thresh", required_argument, NULL, 'N'},
       {"call_thresh", required_argument, NULL, 'C'},
@@ -54,7 +56,7 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
     };
   
   int c = 0;
-  while ( (c = getopt_long_only(argc, argv, "g:pln:s:Z:d:D:f:cN:C:r:S:xo:t:V:", long_options, NULL)) != -1 )
+  while ( (c = getopt_long_only(argc, argv, "g:pln:s:Z:d:D:f:mcN:C:r:S:xo:t:V:", long_options, NULL)) != -1 )
     switch (c) {
     case 'g':
       pars->in_geno = optarg;
@@ -83,6 +85,9 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
       break;
     case 'f':
       pars->min_maf = atof(optarg);
+      break;
+    case 'm':
+      pars->ignore_miss_data = true;
       break;
     case 'c':
       pars->call_geno = true;
@@ -120,7 +125,7 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
 
   if(pars->verbose >= 1) {
     fprintf(stderr, "==> Input Arguments:\n");
-    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s\n\tmax_kb_dist (kb): %lu\n\tmax_snp_dist: %lu\n\tmin_maf: %f\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\trnd_sample: %f\n\tseed: %lu\n\textend_out: %s\n\tout: %s\n\tn_threads: %d\n\tverbose: %d\n\tversion: %s (%s @ %s)\n\n",
+    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s\n\tmax_kb_dist (kb): %lu\n\tmax_snp_dist: %lu\n\tmin_maf: %f\n\tignore_miss_data: %s\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\trnd_sample: %f\n\tseed: %lu\n\textend_out: %s\n\tout: %s\n\tn_threads: %d\n\tverbose: %d\n\tversion: %s (%s @ %s)\n\n",
 	    pars->in_geno,
 	    pars->in_probs ? "true":"false",
 	    pars->in_logscale ? "true":"false",
@@ -130,6 +135,7 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
 	    pars->max_kb_dist,
 	    pars->max_snp_dist,
 	    pars->min_maf,
+	    pars->ignore_miss_data ? "true":"false",
 	    pars->call_geno ? "true":"false",
 	    pars->N_thresh,
 	    pars->call_thresh,

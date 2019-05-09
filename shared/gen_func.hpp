@@ -93,10 +93,9 @@ bool miss_data(double*);
 void call_geno(double*, int, bool = true, double = 0, double = 0, int = 0);
 void post_prob(double*, double*, double*, uint64_t);
 void calc_HWE(double*, double, double, bool = true);
-double est_maf(uint64_t, double**, double);
-double est_maf(uint64_t, double**, double*);
+double est_maf(uint64_t, double**, double, bool = false);
+double est_maf(uint64_t, double**, double*, bool = false);
 
-void bcf_pair_LD (double*, double**, double**, double, double, uint64_t, bool = true);
-uint64_t haplo_freq(double*, double**, double**, double, double, uint64_t, bool = true);
-int pair_freq_iter(double*, double**, double**, uint64_t);
-int pair_freq_iter_log(double*, double**, double**, uint64_t);
+uint64_t haplo_freq(double*, double*, uint64_t*, uint64_t*, double**, double**, double, double, uint64_t, bool, bool = true);
+uint64_t pair_freq_iter(double*, double**, double**, uint64_t, bool);
+uint64_t pair_freq_iter_log(double*, double**, double**, uint64_t, bool);

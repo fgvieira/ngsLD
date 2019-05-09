@@ -30,6 +30,8 @@ $ANGSD/angsd -glf $SIM_DATA/testA.glf.gz -fai $SIM_DATA/testAF.ANC.fas.fai -nInd
 ../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_2.beagle.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out                                              | sort -k 1,1V -k 2,2V > testLD_2.ld
 ../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_2.beagle.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno                                  | sort -k 1,1V -k 2,2V > testLD_2-CG.ld
 ../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_2.beagle.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --call_geno --N_thresh 0.3 --call_thresh 0.9 | sort -k 1,1V -k 2,2V > testLD_2-CGf.ld
+# Ignoring missing data
+../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_2.beagle.gz --probs --pos testLD.pos --max_kb_dist 10 --min_maf 0.05 --extend_out --ignore_miss_data | sort -k 1,1V -k 2,2V > testLD_2.no_miss.ld
 gunzip testLD_2.beagle.gz
 
 # LD prunning

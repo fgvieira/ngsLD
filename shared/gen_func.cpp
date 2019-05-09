@@ -918,17 +918,17 @@ void calc_HWE(double *genot_freq, double freq, double F, bool log_scale){
 // Estimate site MAF from (logscaled) GL through an EM
 // If indF == NULL, assumes uniform prior
 // Else (0 < indF < 1), assumes HWE with specified level of inbreeding
-double est_maf(uint64_t n_ind, double **pdg, double F){
+double est_maf(uint64_t n_ind, double **pdg, double F, bool ignore_miss_data){
   double maf;
   double *indF = init_ptr(n_ind, F);
 
-  maf = est_maf(n_ind, pdg, indF);
+  maf = est_maf(n_ind, pdg, indF, ignore_miss_data);
 
   free_ptr((void*) indF);
   return maf;
 }
 
-double est_maf(uint64_t n_ind, double **pdg, double *indF){
+double est_maf(uint64_t n_ind, double **pdg, double *indF, bool ignore_miss_data){
   int iters = 0;
   double num = 0; // Expected number minor alleles
   double den = 0; // Expected total number of alleles
@@ -939,6 +939,8 @@ double est_maf(uint64_t n_ind, double **pdg, double *indF){
     prev_freq = freq;
 
     for(uint64_t i = 0; i < n_ind; i++){
+      if(miss_data(pdg[i]) && ignore_miss_data)
+	continue;
       if(indF == NULL){
 	F = 0;
 	post_prob(pp, pdg[i], NULL, N_GENO);
@@ -969,19 +971,23 @@ double est_maf(uint64_t n_ind, double **pdg, double *indF){
 // EM to obtain the ML estimate of haplotype frequencies
 /*
   hap_freq - array to store haplotype frequencies
+  loglkl - loglkl of estimates (currently not calculated)
+  n - number of individuals with data
+  i - number of iterations
   gl1 - GLs for site1 for all "n" individuals
   gl2 - GLs for site2 for all "n" individuals
   maf1 - minor allele frequency at site1
   maf2 - minor allele frequency at site2
-  n_ind - number of individuals
+  n_ind - total number of individuals
+  ignore_miss_data - ignore missing genotypes
   log_scale - are GLs in log scale?
 */
-uint64_t haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1, double maf2, uint64_t n_ind, bool log_scale){
+uint64_t haplo_freq(double hap_freq[4], double *loglkl, uint64_t *n, uint64_t *n_iter, double **gl1, double **gl2, double maf1, double maf2, uint64_t n_ind, bool ignore_miss_data, bool log_scale){
   uint64_t i;
   double hap_freq_last[4];
 
   if(maf1 < 0 || maf1 > 1 || maf2 < 0 || maf2 > 1)
-    error("__FUNCTION__", "invalid allele frequencies");
+    error(__FUNCTION__, "invalid allele frequencies");
 
   // Initialize haplotype frequencies
   hap_freq[0] = (1 - maf1) * (1 - maf2); // P_BA
@@ -994,10 +1000,10 @@ uint64_t haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1,
     double eps = 0;
     memcpy(hap_freq_last, hap_freq, 4 * sizeof(double));
     if(log_scale)
-      pair_freq_iter_log(hap_freq, gl1, gl2, n_ind);
+      *n = pair_freq_iter_log(hap_freq, gl1, gl2, n_ind, ignore_miss_data);
     else
-      pair_freq_iter(hap_freq, gl1, gl2, n_ind);
-      
+      *n = pair_freq_iter(hap_freq, gl1, gl2, n_ind, ignore_miss_data);
+
     for (uint64_t j = 0; j < 4; j++) {
       double x = fabs(hap_freq[j] - hap_freq_last[j]);
       if (x > eps) eps = x;
@@ -1007,7 +1013,8 @@ uint64_t haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1,
       break;
   }
 
-  return i;
+  *n_iter = i;
+  return 0;
 }
 
 
@@ -1019,15 +1026,17 @@ uint64_t haplo_freq(double hap_freq[4], double **gl1, double **gl2, double maf1,
   s1 - GLs (in normal scale) for site1 for all "n" individuals
   s2 - GLs (in normal scale) for site2 for all "n" individuals
   n - number of individuals
+  x - number of individuals with data
 */
 
 #define _G1(h, k) ((h>>1&1) + (k>>1&1))
 #define _G2(h, k) ((h&1) + (k&1))
 
-int pair_freq_iter(double f[4], double **s1, double **s2, uint64_t n)
+uint64_t pair_freq_iter(double f[4], double **s1, double **s2, uint64_t n, bool ignore_miss_data)
 {
   double ff[4];
   int k, h;
+  uint64_t x = 0;
 
   memset(ff, 0, 4 * sizeof(double));
 
@@ -1036,6 +1045,10 @@ int pair_freq_iter(double f[4], double **s1, double **s2, uint64_t n)
     p[0] = s1[i];
     p[1] = s2[i];
 
+    if((miss_data(p[0]) || miss_data(p[1])) && ignore_miss_data)
+      continue;
+
+    x++;
     sum = 0;
     for (k = 0; k < 4; ++k)
       for (h = 0; h < 4; ++h)
@@ -1052,13 +1065,16 @@ int pair_freq_iter(double f[4], double **s1, double **s2, uint64_t n)
 
   // Calculate frequency
   for (k = 0; k < 4; ++k)
-    f[k] = ff[k] / (2 * n);
+    f[k] = ff[k] / (2 * x);
 
   // Normalize
   for (k = 0; k < 4; k++)
     f[k] /= f[0] + f[1] + f[2] + f[3];
 
-  return 0;
+  if(!((ignore_miss_data && x<= n) || (!ignore_miss_data && x == n)))
+    error(__FUNCTION__, "invalid number of individuals!");
+
+  return x;
 }
 
 
@@ -1070,11 +1086,13 @@ int pair_freq_iter(double f[4], double **s1, double **s2, uint64_t n)
   s1 - GLs (in log scale) for site1 for all "n" individuals
   s2 - GLs (in log scale) for site2 for all "n" individuals
   n - number of individuals
+  x - number of individuals with data
 */
-int pair_freq_iter_log(double f[4], double **s1, double **s2, uint64_t n)
+uint64_t pair_freq_iter_log(double f[4], double **s1, double **s2, uint64_t n, bool ignore_miss_data)
 {
   double ff[4];
   int k, h;
+  uint64_t x = 0;
 
   // Convert haplot frequencies to log-scale
   conv_space(f, 4, log);
@@ -1086,6 +1104,10 @@ int pair_freq_iter_log(double f[4], double **s1, double **s2, uint64_t n)
     p[0] = s1[i];
     p[1] = s2[i];
 
+    if((miss_data(p[0]) || miss_data(p[1])) && ignore_miss_data)
+      continue;
+
+    x++;
     sum = -INFINITY;
     for (k = 0; k < 4; ++k)
       for (h = 0; h < 4; ++h)
@@ -1102,11 +1124,14 @@ int pair_freq_iter_log(double f[4], double **s1, double **s2, uint64_t n)
 
   // Calculate frequency
   for (k = 0; k < 4; ++k)
-    f[k] = exp(ff[k]) / (2 * n);
+    f[k] = exp(ff[k]) / (2 * x);
 
   // Normalize
   for (k = 0; k < 4; k++)
     f[k] /= f[0] + f[1] + f[2] + f[3];
 
-  return 0;
+  if(!((ignore_miss_data && x<= n) || (!ignore_miss_data && x == n)))
+    error(__FUNCTION__, "invalid number of individuals!");
+
+  return x;
 }
