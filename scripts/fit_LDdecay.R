@@ -1,6 +1,6 @@
 #!/bin/env Rscript
 
-#FileName: fit_LDdecay.R v1.0.8
+#FileName: fit_LDdecay.R v1.0.9
 #Author: "Filipe G. Vieira (fgarrettvieira _at_ gmail [dot] com)"
 #Author: "Emma Fox (e.fox16 _at_ imperial [dot] ac [dot] uk)"
 
@@ -27,12 +27,11 @@ option_list <- list(
   make_option(c('--recomb_rate'), action='store', type='numeric', default=1, help='Recombination rate (or probability of recombination between adjacent sites in cM/Mb) to calculate genetic distances from physical distances. It is assumed to be constant throughout the whole dataset and, for human datasets, a common rule-of-thumb value is 1cM/Mb (1e-6). [%default]'),
   make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis. [%default]'),
   make_option(c('--fit_boot'), action='store', type='numeric', default=0, help='Number of bootstrap replicates for fitting CI. [%default]'),
-  make_option(c('--fit_bin_size'), action='store', type='numeric', default=250, help='Bin data into fixed-sized windows and use the average for fitting. [default %default bps]'),
-  make_option(c('--fit_bin_quant'), action='store', type='numeric', default=0, help='Quantile to represent the bins (e.g. 0 = mean, 50 = median). [%default]'),
+  make_option(c('--fit_bin_size'), action='store', type='numeric', default=250, help='Bin data into fixed-sized windows for fitting. [default %default bps]'),
   make_option(c('--fit_level'), action='store', type='numeric', default=1, help='Fitting level 0) no fitting, best of 1) Nelder-Mead, 2) and BFGS, 3) and L-BFGS-B). [%default]'),
   make_option(c('--plot_group'), action='store', type='character', default='File', help='Group variable'),
   make_option(c('--plot_data'), action='store_true', type='logical', default=FALSE, help='Also plot data points?'),
-  make_option(c('--plot_bin_size'), action='store', type='numeric', default=0, help='Bin data into fixed-sized windows and use the average for plotting. [default %default bps]'),
+  make_option(c('--plot_bin_size'), action='store', type='numeric', default=0, help='Bin data into fixed-sized windows for plotting. [default %default bps]'),
   make_option(c('--plot_x_lim'), action='store', type='numeric', default=NULL, help='X-axis plot limit (in kb). [%default]'),
   make_option(c('--plot_y_lim'), action='store', type='numeric', default=NULL, help='Y-axis plot limit. [%default]'),
   make_option(c('--plot_axis_scales'), action='store', type='character', default='fixed', help='Plot axis scales: fixed (default), free, free_x or free_y'),
@@ -42,6 +41,7 @@ option_list <- list(
   make_option(c('--plot_no_legend'), action='store_true', type='logical', default=FALSE, help='Remove legend from plot'),
   make_option(c('--plot_shapes'), action='store_true', type='logical', default=FALSE, help='Use also shapes (apart from colors)'),
   make_option(c('--plot_line_smooth'), action='store', type='numeric', default=1000, help='LD decay curve smoothness'),
+  make_option(c('--bin_quant'), action='store', type='numeric', default=0, help='Quantile to represent the bins (e.g. 0 = mean, 50 = median). [%default]'),
   make_option(c('-f','--plot_wrap_formula'), action='store', type='character', default=NULL, help='Plot formula for WRAP. [%default]'),
   make_option(c('-o','--out'), action='store', type='character', default=NULL, help='Output file'),
   make_option(c('--seed'), action='store', type='numeric', default=NULL, help='Seed for random number generator'),
@@ -127,6 +127,8 @@ for (i in 1:n_files) {
   tmp_data <- tmp_data[, which(names(tmp_data) %in% c("Dist",opt$ld))]
   # Filter by minimum distance
   tmp_data <- tmp_data[which(tmp_data$Dist < opt$max_kb_dist*1000),]
+  # Convert all 'Inf' to NA
+  tmp_data[mapply(is.infinite, tmp_data)] <- NA
   # Calculate genetic distances, according to Haldane's formula (assumes constant rate across all dataset)
   if(opt$use_recomb_rate && !is.null(opt$recomb_rate))
     tmp_data$Dist <- (1 - (1 - opt$recomb_rate*0.01/1e6)^(tmp_data$Dist))/2
@@ -134,10 +136,10 @@ for (i in 1:n_files) {
   if(opt$fit_bin_size > 1) {
     breaks <- seq(0, max(tmp_data$Dist)+opt$fit_bin_size, opt$fit_bin_size)
     tmp_data$Dist <- cut(tmp_data$Dist, breaks, head(breaks, -1))
-    if(opt$fit_bin_quant > 0) {
-      tmp_data <- aggregate(. ~ Dist, data=tmp_data, quantile, probs=opt$fit_bin_quant/100)
+    if(opt$bin_quant > 0) {
+      tmp_data <- aggregate(. ~ Dist, data=tmp_data, quantile, probs=opt$bin_quant/100, na.rm=TRUE)
     } else {
-      tmp_data <- aggregate(. ~ Dist, data=tmp_data, mean)
+      tmp_data <- aggregate(. ~ Dist, data=tmp_data, mean, na.rm=TRUE)
     }
   }
   tmp_data$File <- ld_file
@@ -196,7 +198,12 @@ fit_eval <- function(par, obs_data) {
   if(length(unique(obs_data$LD)) != 1)
     stop("Invalid data.frame (several LD measures)", call.=opt$debug)
   model <- ld_exp(par, obs_data$Dist, obs_data$LD[1])
-  sum((model - obs_data$value)^2)
+  eval <- sum((model - obs_data$value)^2)
+  if(opt$debug) {
+    str(par)
+    print(eval)
+  }
+  eval
 }
 # Fitting function
 fit_func <- function(x, fit_level) {
@@ -216,6 +223,8 @@ fit_func <- function(x, fit_level) {
       init_vals[1] = runif(1,0,0.1)
       par <- data.frame(init=init_vals, low_lim=c(0,0,0), up_lim=c(1,1,1))
     }
+    if(opt$debug) str(par)
+    
     optim_tmp <- append(optim_tmp, list("BFGS" = optim(par$init, fit_eval, obs_data=x, method="BFGS")) )
     if(fit_level > 1) optim_tmp <- append(optim_tmp, list("Nelder-Mead" = optim(par$init, fit_eval, obs_data=x, method="Nelder-Mead")) )
     if(fit_level > 2) optim_tmp <- append(optim_tmp, list("L-BFGS-B" = optim(par$init, fit_eval, obs_data=x, method="L-BFGS-B", lower=par$low_lim, upper=par$up_lim)) )
@@ -308,8 +317,8 @@ if(opt$plot_data){
     breaks <- seq(0, max(ld_data$Dist)+opt$plot_bin_size, opt$plot_bin_size)
     ld_data$Dist <- cut(ld_data$Dist, breaks, head(breaks, -1))
     ld_data$Dist <- as.numeric(levels(ld_data$Dist))[ld_data$Dist]
-    if(opt$fit_bin_quant > 0) {
-      ld_data <- aggregate(value ~ ., data=ld_data, quantile, probs=opt$fit_bin_quant/100)
+    if(opt$bin_quant > 0) {
+      ld_data <- aggregate(value ~ ., data=ld_data, quantile, probs=opt$bin_quant/100)
     } else {
       ld_data <- aggregate(value ~ ., data=ld_data, mean)
     }
@@ -335,7 +344,7 @@ if(length(opt$ld) > 0) {
   if(length(grp) > 1) stop("invalid number of linetype groups!")
   plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",colour=opt$plot_group,linetype=grp))
   # If ploting data, add a thin black line to help see the line
-  if(opt$plot_data)
+  if(opt$plot_data && FALSE) # Disabled since, when plottig more than 1 line, it plots a grey area between them
     plot <- plot + geom_line(data=fit_data, aes_string(x="Dist",y="value",colour=opt$plot_group), size=0.1, alpha=0.2, colour="black")
   # If plotting, apart from linetypes, also shapes (for B/W or color-blind printing)
   if(opt$plot_shape) {
