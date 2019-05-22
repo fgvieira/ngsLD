@@ -117,23 +117,19 @@ int main (int argc, char** argv) {
   // Read positions from file
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Getting sites coordinates\n");
-  if(pars->pos)
+  if(pars->pos){
     pars->pos_dist = read_pos(pars->pos, pars->n_sites);
-  else
+    pars->labels = read_file(pars->pos, 0, pars->n_sites, BUFF_LEN);
+    // Fix labels...
+    char* ptr;
+    for(uint64_t s = 1; s <= pars->n_sites; s++){
+      ptr = strchr(pars->labels[s-1], '\t');
+      if(ptr != NULL)
+	*ptr = ':';
+    }
+  }else{
     pars->pos_dist = init_ptr(pars->n_sites+1, (double) INFINITY);
-
-  // Read labels
-  if(pars->verbose >= 1)
-    fprintf(stderr, "==> Getting sites labels\n");
-  pars->labels = read_file(pars->pos, 0, pars->n_sites, BUFF_LEN);
-  if(pars->labels == NULL)
-    error(__FUNCTION__, "number of labels does not match number of sites!");
-  // Fix labels...
-  char* ptr;
-  for(uint64_t s = 1; s <= pars->n_sites; s++){
-    ptr = strchr(pars->labels[s-1], '\t');
-    if(ptr != NULL)
-      *ptr = ':';
+    pars->labels = init_ptr(pars->n_sites, 0, "Site:#");
   }
 
 
