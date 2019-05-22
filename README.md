@@ -4,11 +4,11 @@
 
 ### Citation
 
-`ngsLD` has been submitted to [Bioinformatics](http://bioinformatics.oxfordjournals.org), so please cite it if you use it in your work:
+`ngsLD` has been accepted in [Bioinformatics](https://doi.org/10.1093/bioinformatics/btz200), so please cite it if you use it in your work:
 
     Fox EA, Wright AE, Fumagalli M, and Vieira FG
     ngsLD: evaluating linkage disequilibrium using genotype likelihoods
-    [Bioinformatics](https://doi.org/10.1093/bioinformatics/btz200) (2018) ??: ????-????
+    Bioinformatics (2018) ??: ????-????
 
 
 ### Installation
