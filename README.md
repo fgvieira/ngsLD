@@ -8,7 +8,7 @@
 
     Fox EA, Wright AE, Fumagalli M, and Vieira FG
     ngsLD: evaluating linkage disequilibrium using genotype likelihoods
-    Bioinformatics (2018) ??: ????-????
+    [Bioinformatics](https://doi.org/10.1093/bioinformatics/btz200) (2018) ??: ????-????
 
 
 ### Installation
@@ -55,6 +55,7 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--max_kb_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. If set to 0 (zero) will perform all comparisons. [100]
 * `--max_snp_dist INT`: maximum distance between SNPs (in number of SNPs) to calculate LD. If set to 0 (zero) will perform all comparisons. [0]
 * `--min_maf DOUBLE`: minimum SNP minor allele frequency. [0.001]
+* `--ignore_miss_data`: ignore missing genotype data from analyses.
 * `--call_geno`: call genotypes before running analyses.
 * `--N_thresh DOUBLE`: minimum threshold to consider site; missing data if otherwise (assumes -call_geno).
 * `--call_thresh DOUBLE`: minimum threshold to call genotype; left as is if otherwise (assumes -call_geno).
