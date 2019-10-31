@@ -8,8 +8,7 @@
 
     Fox EA, Wright AE, Fumagalli M, and Vieira FG
     ngsLD: evaluating linkage disequilibrium using genotype likelihoods
-    Bioinformatics (2018) ??: ????-????
-
+    Bioinformatics (2019) 35(19):3855 - 3856
 
 ### Installation
 
@@ -67,13 +66,13 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--verbose INT`: selects verbosity level. [1]
 
 ### Input data
-As input, `ngsLD` accepts both genotypes, genotype likelihoods (GP) or genotype posterior probabilities (GP). Genotypes must be input as gziped TSV with one row per site and one column per individual ![n_sites.n_ind](http://mathurl.com/ycxtfy8u.png) and genotypes coded as [-1, 0, 1, 2].
-As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 columns per individual ![3.n_sites.n_ind](http://mathurl.com/ycvy5fvx.png) and, in the case of binary, the GL/GP coded as doubles.
+As input, `ngsLD` accepts both genotypes, genotype likelihoods (GP) or genotype posterior probabilities (GP). Genotypes must be input as gziped TSV with one row per site and one column per individual ![n_sites.n_ind](http://bit.ly/2Wvvt03) and genotypes coded as [-1, 0, 1, 2].
+As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 columns per individual ![3.n_sites.n_ind](http://bit.ly/2N3jkwc) and, in the case of binary, the GL/GP coded as doubles.
 
 It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
 ### Output
-`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://mathurl.com/ya2uo8sp.png) from pearson correlation between expected genotypes, ![D](http://mathurl.com/y8cesmet.png) from EM algorithm, ![D'](http://mathurl.com/y8mgegb8.png) from EM algorithm, and ![r^2](http://mathurl.com/ya2uo8sp.png) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Collins et al., 1999](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC24792/)).
+`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://bit.ly/32Nw9QH) from pearson correlation between expected genotypes, ![D](http://bit.ly/34mm9xV) from EM algorithm, ![D'](http://bit.ly/2oxSd2J) from EM algorithm, and ![r^2](http://bit.ly/32Nw9QH) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Collins et al., 1999](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC24792/)).
 
 ### Possible analyses
 ##### LD pruning
@@ -88,8 +87,22 @@ For some analyses, linked sites are typically pruned since their presence can bi
 
 For more advanced options, please check script help (`perl scripts/prune_graph.pl --help`).
 
-##### LD decay
-If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts/fit_LDdecay.R` to fit LD decay models for ![r^2](http://mathurl.com/ya2uo8sp.png) ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and ![D'](http://mathurl.com/y8mgegb8.png) ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)).
+#### LD decay
+If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts/fit_LDdecay.R` to fit LD decay models for ![r^2](http://bit.ly/32Nw9QH) ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and ![D'](http://bit.ly/2oxSd2J) ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)) over physical (or genetic) distance.
+
+There are two models implemented for ![r^2](http://bit.ly/32Nw9QH) and one for ![D'](http://bit.ly/2oxSd2J) decay. Briefly, the first is derived by adjusting the expected ![r^2](http://bit.ly/32Nw9QH) under a drift-recombination equilibrium for finite samples sizes and low level of mutation ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052):
+
+![E_r^2](http://bit.ly/334PA7s)
+
+The second formulation is an extension of the to account for the range of observed ![r^2](http://bit.ly/32Nw9QH) values:
+
+![E_r^2](http://bit.ly/2MZLrfw)
+
+For ![D'](http://bit.ly/2oxSd2J), we fit the expectation derived by [Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/), assuming a recombination rate of ![cm-Mb](http://bit.ly/2JznAB9) and fixing ![D'0_1](http://bit.ly/33dMJJo):
+
+![E_D'](http://bit.ly/2N0RbWw)
+
+For more information, please refer to the online published supplementary data.
 
     % Rscript --vanilla --slave scripts/fit_LDdecay.R --ld_files ld_files.list --out plot.pdf
 
@@ -114,5 +127,5 @@ To plot LD blocks, we also provide a small script as an example for how it can b
 * For the LD decay, as a rule-of-thumb, consider using at least 10'000 SNPs; check the confidence interval and, if too wide, increase number of SNPs.
 
 ### Thread pool
-The thread pool	implementation was adapted from Mathias Brossard's and is freely available from:
+The thread pool implementation was adapted from Mathias Brossard's and is freely available from:
 https://github.com/mbrossard/threadpool
