@@ -66,13 +66,13 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--verbose INT`: selects verbosity level. [1]
 
 ### Input data
-As input, `ngsLD` accepts both genotypes, genotype likelihoods (GP) or genotype posterior probabilities (GP). Genotypes must be input as gziped TSV with one row per site and one column per individual ![n_sites.n_ind](http://bit.ly/2Wvvt03) and genotypes coded as [-1, 0, 1, 2].
-As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 columns per individual ![3.n_sites.n_ind](http://bit.ly/2N3jkwc) and, in the case of binary, the GL/GP coded as doubles.
+As input, `ngsLD` accepts both genotypes, genotype likelihoods (GP) or genotype posterior probabilities (GP). Genotypes must be input as gziped TSV with one row per site and one column per individual ![n_sites.n_ind](http://latex.codecogs.com/png.latex?(n_{sites}\cdot&space;n_{ind})) and genotypes coded as [-1, 0, 1, 2].
+As for GL and GP, `ngsLD` accepts both gzipd TSV and binary formats, but with 3 columns per individual ![3.n_sites.n_ind](http://latex.codecogs.com/png.latex?(3\cdot&space;n_{sites}\cdot&space;n_{ind})) and, in the case of binary, the GL/GP coded as doubles.
 
 It is advisable that SNPs be called first, since monomorphic sites are not informative and it will greatly speed up computation. If not, these comparisons will show up as `nan` or `inf` in the output.
 
 ### Output
-`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://bit.ly/32Nw9QH) from pearson correlation between expected genotypes, ![D](http://bit.ly/34mm9xV) from EM algorithm, ![D'](http://bit.ly/2oxSd2J) from EM algorithm, and ![r^2](http://bit.ly/32Nw9QH) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Collins et al., 1999](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC24792/)).
+`ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://latex.codecogs.com/png.latex?r^2) from pearson correlation between expected genotypes, ![D](http://latex.codecogs.com/png.latex?D) from EM algorithm, ![D'](http://latex.codecogs.com/png.latex?D') from EM algorithm, and ![r^2](http://latex.codecogs.com/png.latex?r^2) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Collins et al., 1999](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC24792/)).
 
 ### Possible analyses
 ##### LD pruning
@@ -88,19 +88,19 @@ For some analyses, linked sites are typically pruned since their presence can bi
 For more advanced options, please check script help (`perl scripts/prune_graph.pl --help`).
 
 #### LD decay
-If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts/fit_LDdecay.R` to fit LD decay models for ![r^2](http://bit.ly/32Nw9QH) ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and ![D'](http://bit.ly/2oxSd2J) ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)) over physical (or genetic) distance.
+If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts/fit_LDdecay.R` to fit LD decay models for ![r^2](http://latex.codecogs.com/png.latex?r^2) ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and ![D'](http://latex.codecogs.com/png.latex?D') ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)) over physical (or genetic) distance.
 
-There are two models implemented for ![r^2](http://bit.ly/32Nw9QH) and one for ![D'](http://bit.ly/2oxSd2J) decay. Briefly, the first is derived by adjusting the expected ![r^2](http://bit.ly/32Nw9QH) under a drift-recombination equilibrium for finite samples sizes and low level of mutation ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052):
+There are two models implemented for ![r^2](http://latex.codecogs.com/png.latex?r^2) and one for ![D'](http://latex.codecogs.com/png.latex?D') decay. Briefly, the first is derived by adjusting the expected ![r^2](http://latex.codecogs.com/png.latex?r^2) under a drift-recombination equilibrium for finite samples sizes and low level of mutation ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052):
 
-![E_r^2](http://bit.ly/334PA7s)
+![E_r^2](http://latex.codecogs.com/png.latex?E\left[r^2\right]=\left[\frac{10&plus;C}{(2&plus;C)(11&plus;C)}\right]\cdot\left[1&plus;\frac{(3&plus;C)(12&plus;12C&plus;C^2)}{n(2&plus;C)(11&plus;C)}\right])
 
-The second formulation is an extension of the to account for the range of observed ![r^2](http://bit.ly/32Nw9QH) values:
+The second formulation is an extension of the to account for the range of observed ![r^2](http://latex.codecogs.com/png.latex?r^2) values:
 
-![E_r^2](http://bit.ly/2MZLrfw)
+![E_r^2](http://latex.codecogs.com/png.latex?E\left[r^2\right]=\frac{r^2_{high}-r^2_{low}}{1&plus;C}&plus;r^2_{low})
 
-For ![D'](http://bit.ly/2oxSd2J), we fit the expectation derived by [Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/), assuming a recombination rate of ![cm-Mb](http://bit.ly/2JznAB9) and fixing ![D'0_1](http://bit.ly/33dMJJo):
+For ![D'](http://latex.codecogs.com/png.latex?D'), we fit the expectation derived by [Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/), assuming a recombination rate of ![cm-Mb](http://latex.codecogs.com/png.latex?1cm=1Mb) and fixing ![D'0_1](http://latex.codecogs.com/png.latex?D'_0=1):
 
-![E_D'](http://bit.ly/2N0RbWw)
+![E_D'](http://latex.codecogs.com/png.latex?E\left[D'\right]=D'_{low}&plus;(D'_{high}-D'_{low})\cdot&space;D'_0&space;\cdot&space;(1-\theta)^t)
 
 For more information, please refer to the online published supplementary data.
 
