@@ -90,11 +90,11 @@ For more advanced options, please check script help (`perl scripts/prune_graph.p
 #### LD decay
 If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts/fit_LDdecay.R` to fit LD decay models for ![r^2](http://latex.codecogs.com/png.latex?r^2) ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and ![D'](http://latex.codecogs.com/png.latex?D') ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)) over physical (or genetic) distance.
 
-There are two models implemented for ![r^2](http://latex.codecogs.com/png.latex?r^2) and one for ![D'](http://latex.codecogs.com/png.latex?D') decay. Briefly, the first is derived by adjusting the expected ![r^2](http://latex.codecogs.com/png.latex?r^2) under a drift-recombination equilibrium for finite samples sizes and low level of mutation ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052):
+There are two models implemented for ![r^2](http://latex.codecogs.com/png.latex?r^2) and one for ![D'](http://latex.codecogs.com/png.latex?D') decay. Briefly, the first is derived by adjusting the expected ![r^2](http://latex.codecogs.com/png.latex?r^2) under a drift-recombination equilibrium for finite samples sizes and low level of mutation ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052)):
 
 ![E_r^2](http://latex.codecogs.com/png.latex?E\left[r^2\right]=\left[\frac{10&plus;C}{(2&plus;C)(11&plus;C)}\right]\cdot\left[1&plus;\frac{(3&plus;C)(12&plus;12C&plus;C^2)}{n(2&plus;C)(11&plus;C)}\right])
 
-The second formulation is an extension of the to account for the range of observed ![r^2](http://latex.codecogs.com/png.latex?r^2) values:
+The second formulation is an extension of the previous to account for the range of observed ![r^2](http://latex.codecogs.com/png.latex?r^2) values:
 
 ![E_r^2](http://latex.codecogs.com/png.latex?E\left[r^2\right]=\frac{r^2_{high}-r^2_{low}}{1&plus;C}&plus;r^2_{low})
 
