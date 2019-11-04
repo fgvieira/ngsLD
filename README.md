@@ -94,7 +94,7 @@ There are two models implemented for ![r^2](http://latex.codecogs.com/png.latex?
 
 ![E_r^2](http://latex.codecogs.com/png.latex?E\left[r^2\right]=\left[\frac{10&plus;C}{(2&plus;C)(11&plus;C)}\right]\cdot\left[1&plus;\frac{(3&plus;C)(12&plus;12C&plus;C^2)}{n(2&plus;C)(11&plus;C)}\right])
 
-The second formulation is an extension of the previous to account for the range of observed ![r^2](http://latex.codecogs.com/png.latex?r^2) values:
+The second formulation is an extension of the [Sved, 1971](https://www.ncbi.nlm.nih.gov/pubmed/5170716) model (expected ![r^2](http://latex.codecogs.com/png.latex?r^2) under drift-recombination equilibrium) to account for the range of observed ![r^2](http://latex.codecogs.com/png.latex?r^2) values:
 
 ![E_r^2](http://latex.codecogs.com/png.latex?E\left[r^2\right]=\frac{r^2_{high}-r^2_{low}}{1&plus;C}&plus;r^2_{low})
 
@@ -117,7 +117,7 @@ For more advanced options, please check script help (`Rscript --vanilla --slave 
 NOTE: Please keep in mind that these are just general trends, and that it all depends on the biologu/genetics of the sample. Since LD is influenced by many factors, it is usually less straightforward to derive exact predictions from it.
 
 ##### LD blocks
-To plot LD blocks, we also provide a small script as an example for how it can be easily done in `R` using the `LDheatmap` package (by default, ![r^2](http://mathurl.com/ya2uo8sp.png) is plotted).
+To plot LD blocks, we also provide a small script as an example for how it can be easily done in `R` using the `LDheatmap` package (by default, ![r^2](http://latex.codecogs.com/png.latex?r^2) is plotted).
 
     % cat testLD_2.ld | bash ../scripts/LD_blocks.sh chrSIM_21 2000 5000
 
