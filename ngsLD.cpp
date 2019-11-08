@@ -62,9 +62,9 @@ int main (int argc, char** argv) {
   // Prepare output //
   ////////////////////
   // Initialize MAF array
-  pars->maf = init_ptr(pars->n_sites+1, (double) -1);
+  pars->maf = init_ptr(pars->n_sites, (double) -1);
   // Initialize output variables
-  pars->expected_geno = init_ptr(pars->n_sites+1, pars->n_ind, (double) -1);
+  pars->expected_geno = init_ptr(pars->n_sites, pars->n_ind, (double) -1);
   // Initialize random seed generator
   gsl_rng* rnd_gen = gsl_rng_alloc(gsl_rng_taus);
   gsl_rng_set(rnd_gen, pars->seed);
@@ -85,7 +85,7 @@ int main (int argc, char** argv) {
   if(pars->verbose >= 1)
     fprintf(stderr, "> Reading data from file...\n");
   double ***tmp = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, &pars->in_logscale, pars->n_ind, pars->n_sites);
-  pars->geno_lkl = transp_matrix(tmp, pars->n_ind, pars->n_sites+1);
+  pars->geno_lkl = transp_matrix(tmp, pars->n_ind, pars->n_sites);
   free_ptr((void**) tmp, pars->n_ind);
 
   // Call genotypes
@@ -93,19 +93,19 @@ int main (int argc, char** argv) {
     if(pars->verbose >= 1)
       fprintf(stderr, "> Calling genotypes...\n");
     for(uint64_t i = 0; i < pars->n_ind; i++)
-      for(uint64_t s = 1; s <= pars->n_sites; s++)
+      for(uint64_t s = 0; s < pars->n_sites; s++)
 	call_geno(pars->geno_lkl[s][i], N_GENO, pars->in_logscale, pars->N_thresh, pars->call_thresh, 0);
   }
 
   // Calculate MAF
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Calculating MAF for all sites...\n");
-  for(uint64_t s = 1; s <= pars->n_sites; s++)
+  for(uint64_t s = 0; s < pars->n_sites; s++)
     pars->maf[s] = est_maf(pars->n_ind, pars->geno_lkl[s], (double*) NULL, pars->ignore_miss_data);
   
   // Data pre-processing...
   for(uint64_t i = 0; i < pars->n_ind; i++)
-    for(uint64_t s = 1; s <= pars->n_sites; s++){
+    for(uint64_t s = 0; s < pars->n_sites; s++){
       // Convert to normal space (since GENOs are in LOG from read_geno)
       conv_space(pars->geno_lkl[s][i], N_GENO, exp);
 
@@ -122,13 +122,13 @@ int main (int argc, char** argv) {
     pars->labels = read_file(pars->pos, 0, pars->n_sites, BUFF_LEN);
     // Fix labels...
     char* ptr;
-    for(uint64_t s = 1; s <= pars->n_sites; s++){
-      ptr = strchr(pars->labels[s-1], '\t');
+    for(uint64_t s = 0; s < pars->n_sites; s++){
+      ptr = strchr(pars->labels[s], '\t');
       if(ptr != NULL)
 	*ptr = ':';
     }
   }else{
-    pars->pos_dist = init_ptr(pars->n_sites+1, (double) INFINITY);
+    pars->pos_dist = init_ptr(pars->n_sites, (double) INFINITY);
     pars->labels = init_ptr(pars->n_sites, 0, "Site:#");
   }
 
@@ -136,8 +136,8 @@ int main (int argc, char** argv) {
 
   // DEBUG
   if(pars->verbose >= 7)
-    for(uint64_t s = 1; s <= min(10, pars->n_sites); s++)
-      fprintf(stderr, "%lu\t%s\t%f (%f %f %f)\n", s, pars->labels[s-1], pars->maf[s], pars->geno_lkl[s][0][0], pars->geno_lkl[s][0][1], pars->geno_lkl[s][0][2]);
+    for(uint64_t s = 0; s < min(10, pars->n_sites); s++)
+      fprintf(stderr, "%lu\t%s\t%f (%f %f %f)\n", s, pars->labels[s], pars->maf[s], pars->geno_lkl[s][0][0], pars->geno_lkl[s][0][1], pars->geno_lkl[s][0][2]);
 
 
 
@@ -151,9 +151,9 @@ int main (int argc, char** argv) {
   if( (pars->thread_pool = threadpool_create(pars->n_threads, pars->n_sites, 0)) == NULL )
     error(__FUNCTION__, "failed to create thread pool!");
   // Allocate memory for array of pthread structures
-  pth_struct **pth = new pth_struct*[pars->n_sites+1];
+  pth_struct **pth = new pth_struct*[pars->n_sites];
 
-  for(uint64_t s1 = 1; s1 <= pars->n_sites; s1++){
+  for(uint64_t s1 = 0; s1 < pars->n_sites; s1++){
     // Fill in pthread structure
     pth[s1] = new pth_struct;
     pth[s1]->pars = pars;
@@ -176,10 +176,10 @@ int main (int argc, char** argv) {
       error(__FUNCTION__, "thread failure!");
 
     if(pars->verbose >= 3)
-      if(s1 == 1 ||
+      if(s1 == 0 ||
          s1 == pars->n_sites ||
          s1 % 100000 == 0)
-        fprintf(stderr, "> Launched thread for site %lu (%s)\n", s1, pars->labels[s1-1]);
+        fprintf(stderr, "> Launched thread for site %lu (%s)\n", s1, pars->labels[s1]);
   }
 
 
@@ -204,8 +204,8 @@ int main (int argc, char** argv) {
 
   fclose(pars->out_fh);
   //free_ptr((void*) pars->in_geno);
-  free_ptr((void***) pars->geno_lkl, pars->n_sites+1, pars->n_ind);
-  free_ptr((void**) pars->expected_geno, pars->n_sites+1);
+  free_ptr((void***) pars->geno_lkl, pars->n_sites, pars->n_ind);
+  free_ptr((void**) pars->expected_geno, pars->n_sites);
   free_ptr((void**) pars->labels, pars->n_sites);
   free_ptr((void*) pars->pos_dist);
   free_ptr((void*) pars->maf);
@@ -239,7 +239,7 @@ void calc_pair_LD (void *pth){
     dist += p->pars->pos_dist[s2];
 
     if(p->pars->verbose > 8)
-      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%.0f\t%f\t%f\t%s\t%s\n", s1, p->pars->labels[s1-1], s2, p->pars->labels[s2-1], dist, p->pars->maf[s1], p->pars->maf[s2], join(p->pars->expected_geno[s1],p->pars->n_ind,","), join(p->pars->expected_geno[s2],p->pars->n_ind,","));
+      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%.0f\t%f\t%f\t%s\t%s\n", s1, p->pars->labels[s1], s2, p->pars->labels[s2], dist, p->pars->maf[s1], p->pars->maf[s2], join(p->pars->expected_geno[s1],p->pars->n_ind,","), join(p->pars->expected_geno[s2],p->pars->n_ind,","));
 
     // Stop if current distance is greater than max_kb_dist
     if(p->pars->max_kb_dist > 0 && p->pars->max_kb_dist*1000 < dist)
@@ -258,7 +258,7 @@ void calc_pair_LD (void *pth){
       continue;
 
     if(p->pars->verbose > 8)
-      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%lu\t%.0f\t%lu\t%f\t%f\t%f\n", s1, p->pars->labels[s1-1], s2, p->pars->labels[s2-1], p->pars->max_snp_dist, dist, p->pars->max_kb_dist*1000, p->pars->maf[s1], p->pars->maf[s2], p->pars->min_maf);
+      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%lu\t%.0f\t%lu\t%f\t%f\t%f\n", s1, p->pars->labels[s1], s2, p->pars->labels[s2], p->pars->max_snp_dist, dist, p->pars->max_kb_dist*1000, p->pars->maf[s1], p->pars->maf[s2], p->pars->min_maf);
 
 
 
@@ -267,7 +267,7 @@ void calc_pair_LD (void *pth){
 
     // Calculate LD from haplotype frequencies (estimated through an EM)
     // Estimate haplotype frequencies
-    haplo_freq(hap_freq, &loglkl, &n_ind_data, &n_iter, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->maf[s1], p->pars->maf[s2], p->pars->n_ind, p->pars->ignore_miss_data, false);
+    n_iter = haplo_freq(hap_freq, &loglkl, &n_ind_data, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->maf[s1], p->pars->maf[s2], p->pars->n_ind, p->pars->ignore_miss_data, false);
     // Allele frequencies
     double maf[2];
     maf[0] = 1 - (hap_freq[0] + hap_freq[1]);
@@ -284,8 +284,8 @@ void calc_pair_LD (void *pth){
     pthread_mutex_lock(&printf_mutex);
     // Print standard output: Locus1, Locus2, distance, r2pear, D, D', r2
     fprintf(p->pars->out_fh, "%s\t%s\t%.0f\t%f\t%f\t%f\t%f",
-	    p->pars->labels[s1-1],
-	    p->pars->labels[s2-1],
+	    p->pars->labels[s1],
+	    p->pars->labels[s2],
 	    dist,
 	    r2pear,
 	    D,
