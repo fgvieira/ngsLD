@@ -119,7 +119,11 @@ int main (int argc, char** argv) {
     fprintf(stderr, "==> Getting sites coordinates\n");
   if(pars->pos){
     pars->pos_dist = read_pos(pars->pos, pars->n_sites);
-    pars->labels = read_file(pars->pos, 0, pars->n_sites, BUFF_LEN);
+    if(pars->verbose >= 6)
+      for(uint64_t s = 0; s < pars->n_sites; s++)
+	fprintf(stderr, "%lu\t%f\n", s, pars->pos_dist[s]);
+    if(read_file(pars->pos, &pars->labels) != pars->n_sites)
+      error(__FUNCTION__, "invalid number of lines in POS file");
     // Fix labels...
     char* ptr;
     for(uint64_t s = 0; s < pars->n_sites; s++){
