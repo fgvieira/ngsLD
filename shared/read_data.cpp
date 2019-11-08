@@ -18,14 +18,14 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool *in_logscale
   char *buf = init_ptr(BUFF_LEN, (const char*) '\0');
 
   // Allocate memory
-  double ***geno = init_ptr(n_ind, n_sites+1, N_GENO, -INF);
+  double ***geno = init_ptr(n_ind, n_sites, N_GENO, -INF);
   
   // Open GENO file
   gzFile in_geno_fh = open_gzfile(in_geno, in_bin ? "rb" : "r");
   if(in_geno_fh == NULL)
     error(__FUNCTION__, "cannot open GENO file!");
 
-  for(uint64_t s = 1; s <= n_sites; s++){
+  for(uint64_t s = 0; s < n_sites; s++){
     if(in_bin){
       for(uint64_t i = 0; i < n_ind; i++){
 	if( gzread(in_geno_fh, geno[i][s], N_GENO * sizeof(double)) != N_GENO * sizeof(double) )
@@ -55,7 +55,7 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool *in_logscale
       // Check if header and skip
       if(!n_fields){
 	fprintf(stderr, "> Header found! Skipping line...\n");
-        if(s != 1){
+        if(s != 0){
           warn(__FUNCTION__, " header found but not on first line. Is this an error?");
           fprintf(stderr, "%s/n", buf);
         }
@@ -106,75 +106,76 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool *in_logscale
 
 
 
+uint64_t read_split(char *in_file, uint64_t offset, uint64_t n_rows, char*** out, const char* sep){
+  int n_fields = 0;
 
+  // Read file
+  char** buf = read_file(in_file, offset, n_rows, BUFF_LEN);
+  if(buf == NULL)
+    error(__FUNCTION__, "cannot open file!");
+
+  // Split string into fields
+  for(uint64_t i = 0; i < n_rows; i++) {
+    int n = split(buf[i], sep, &out[i]);
+    // If first field, save number of fields
+    if(n_fields == 0)
+      n_fields = n;
+    // Check if number if fields is always the same
+    if(n_fields != n)
+      error(__FUNCTION__, "invalid number of fields in file!");
+  }
+
+  // Clean-up
+  delete [] buf;
+  return n_fields;
+}
 
 
 
 double* read_pos(char *in_pos, uint64_t n_sites){
-  uint64_t n_fields;
-  char *buf = init_ptr(BUFF_LEN, (const char*) '\0');
+  // Allocate memory for POS
+  double *pos_dist = init_ptr(n_sites, (double) INFINITY);
+  // Allocate memory for FILE
+  char ***buf = init_ptr(n_sites, 0, 0, (const char*) '\0');
+
+  // Read file
+  uint64_t n_fields = read_split(in_pos, 0, n_sites, buf);
+  if(buf == NULL)
+    error(__FUNCTION__, "cannot open file!");
+  if(n_fields < 2)
+    error(__FUNCTION__, "wrong POS file format!");
 
   char *prev_chr = init_ptr(BUFF_LEN, (const char*) '\0');
   uint64_t prev_pos = 0;
 
-  // Allocate memory
-  double *pos_dist = init_ptr(n_sites+1, (double) INFINITY);
-
-  // Open file
-  gzFile in_pos_fh = open_gzfile(in_pos, "r");
-  if(in_pos_fh == NULL)
-    error(__FUNCTION__, "cannot open POS file!");
-
-  for(uint64_t s = 1; s <= n_sites; s++){
-    char **tmp;
-    if( gzgets(in_pos_fh, buf, BUFF_LEN) == NULL)
-      error(__FUNCTION__, "cannot read next site from POS file!");
-    // Remove trailing newline
-    chomp(buf);
-    // Check if empty
-    if(strlen(buf) == 0)
-      continue;
-    // Parse input line into array
-    n_fields = split(buf, (const char*) " \t", &tmp);
-
+  for(uint64_t s = 0; s < n_sites; s++){
     // Check if header and skip
-    if(!n_fields || strtod(tmp[1], NULL)==0){
+    if(strtod(buf[s][1], NULL)==0){
       fprintf(stderr, "> Header found! Skipping line...\n");
-      if(s != 1){
+      if(s != 0){
 	warn(__FUNCTION__, " header found but not on first line. Is this an error?");
-	fprintf(stderr, "%s/n", buf);
+	fprintf(stderr, "%s\t%s/n", buf[s][0], buf[s][1]);
       }
       s--;
       continue;
     }
 
-    if(n_fields < 2)
-      error(__FUNCTION__, "wrong POS file format!");
-
-    // If first chr to be parsed
+    // If first CHR to be parsed, store it
     if(strlen(prev_chr) == 0)
-      strcpy(prev_chr, tmp[0]);
+      strcpy(prev_chr, buf[s][0]);
     
-    if(strcmp(prev_chr, tmp[0]) == 0){
-      pos_dist[s] = strtod(tmp[1], NULL) - prev_pos;
+    // Check if CHR changed
+    if(strcmp(prev_chr, buf[s][0]) == 0){
+      pos_dist[s] = strtod(buf[s][1], NULL) - prev_pos;
       if(pos_dist[s] < 1)
 	error(__FUNCTION__, "invalid distance between adjacent sites!");
     }else{
       pos_dist[s] = INFINITY;
-      strcpy(prev_chr, tmp[0]);
+      strcpy(prev_chr, buf[s][0]);
     }
-    prev_pos = strtoul(tmp[1], NULL, 0);
-
-    // Free memory
-    free_ptr((void**) tmp, n_fields);
+    prev_pos = strtoul(buf[s][1], NULL, 0);
   }
 
-  // Check if file is at EOF
-  gzread(in_pos_fh, buf, 1);
-  if(!gzeof(in_pos_fh))
-    error(__FUNCTION__, "POS file not at EOF. Check POS file and number of sites!");
-
-  gzclose(in_pos_fh);
   delete [] buf;
   delete [] prev_chr;
 

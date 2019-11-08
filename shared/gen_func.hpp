@@ -78,6 +78,7 @@ double ****init_ptr(uint64_t, uint64_t, uint64_t, uint64_t, double);
 char *strdcat(char*, const char*);
 char *init_ptr(uint64_t, const char*);
 char **init_ptr(uint64_t, uint64_t, const char*);
+char ***init_ptr(uint64_t, uint64_t, uint64_t, const char*);
 
 void free_ptr(void*);
 void free_ptr(void**, uint64_t);
@@ -96,6 +97,6 @@ void calc_HWE(double*, double, double, bool = true);
 double est_maf(uint64_t, double**, double, bool = false);
 double est_maf(uint64_t, double**, double*, bool = false);
 
-uint64_t haplo_freq(double*, double*, uint64_t*, uint64_t*, double**, double**, double, double, uint64_t, bool, bool = true);
+uint64_t haplo_freq(double*, double*, uint64_t*, double**, double**, double, double, uint64_t, bool, bool = true);
 uint64_t pair_freq_iter(double*, double**, double**, uint64_t, bool);
 uint64_t pair_freq_iter_log(double*, double**, double**, uint64_t, bool);

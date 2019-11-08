@@ -219,15 +219,15 @@ gzFile open_gzfile(const char* name, const char* mode, uint64_t buf_size){
 
 
 // Read data from file and place into array
-char **read_file(const char *in_file, uint64_t start_line, uint64_t n_lines, uint64_t buff_size){
+char **read_file(const char *in_file, uint64_t offset, uint64_t n_lines, uint64_t buff_size){
   uint64_t cnt = 0;
   char buf[buff_size];
-  char **ptr = init_ptr(n_lines-start_line, 0, (const char*) '\0');
+  char **ptr = init_ptr(n_lines, 0, (const char*) '\0');
 
   // Open file
-  gzFile in_file_fh = gzopen(in_file, "r");
+  gzFile in_file_fh = open_gzfile(in_file, "r");
   if(in_file_fh == NULL)
-    return NULL;
+    error(__FUNCTION__, "cannot open file!");
 
   for(cnt = 0; cnt < n_lines && !gzeof(in_file_fh); cnt++){
     buf[0] = '\0';
@@ -240,9 +240,10 @@ char **read_file(const char *in_file, uint64_t start_line, uint64_t n_lines, uin
       cnt--;
       continue;
     }
-    // Skip until star_line
-    if(cnt < start_line){
+    // Skip offset
+    if(cnt < offset){
       cnt--;
+      offset--;
       continue;
     }
     // Alloc memory and copy line
@@ -259,12 +260,12 @@ char **read_file(const char *in_file, uint64_t start_line, uint64_t n_lines, uin
 
 
 // Read data from file and place into array double
-double **read_file(const char *in_file, uint64_t start_line, uint64_t n_lines, int n_cols, uint64_t buff_size){
-  char **tmp = read_file(in_file, start_line, n_lines, buff_size);
+double **read_file(const char *in_file, uint64_t offset, uint64_t n_lines, int n_cols, uint64_t buff_size){
+  char **tmp = read_file(in_file, offset, n_lines, buff_size);
   if(tmp == NULL)
     return NULL;
 
-  double **ptr = init_ptr(n_lines-start_line, 0, 0.0);
+  double **ptr = init_ptr(n_lines, 0, 0.0);
   for(uint64_t cnt = 0; cnt < n_lines; cnt++)
     if(split(tmp[cnt], (const char*) " \t", &ptr[cnt]) != n_cols)
       error(__FUNCTION__, "number of columns do not match!");
@@ -722,7 +723,7 @@ char *init_ptr(uint64_t A, const char *init){
 
 char **init_ptr(uint64_t A, uint64_t B, const char *init){
   if(A < 1)
-    error(__FUNCTION__, "invalid size of array!");
+    return NULL;
 
   char **ptr;
   try{
@@ -741,6 +742,25 @@ char **init_ptr(uint64_t A, uint64_t B, const char *init){
     ptr[a] = init_ptr(B, pinit);
   }
   delete [] pinit;
+
+  return ptr;
+}
+
+
+
+char ***init_ptr(uint64_t A, uint64_t B, uint64_t C, const char *init){
+  if(A < 1)
+    error(__FUNCTION__, "invalid size of array!");
+
+  char ***ptr;
+  try{
+    ptr = new char**[A];
+  }catch (std::bad_alloc&){
+    error(__FUNCTION__, "cannot allocate more memory!");
+  }
+
+  for(uint64_t a = 0; a < A; a++)
+    ptr[a] = init_ptr(B, C, init);
 
   return ptr;
 }
@@ -973,7 +993,6 @@ double est_maf(uint64_t n_ind, double **pdg, double *indF, bool ignore_miss_data
   hap_freq - array to store haplotype frequencies
   loglkl - loglkl of estimates (currently not calculated)
   n - number of individuals with data
-  i - number of iterations
   gl1 - GLs for site1 for all "n" individuals
   gl2 - GLs for site2 for all "n" individuals
   maf1 - minor allele frequency at site1
@@ -982,8 +1001,7 @@ double est_maf(uint64_t n_ind, double **pdg, double *indF, bool ignore_miss_data
   ignore_miss_data - ignore missing genotypes
   log_scale - are GLs in log scale?
 */
-uint64_t haplo_freq(double hap_freq[4], double *loglkl, uint64_t *n, uint64_t *n_iter, double **gl1, double **gl2, double maf1, double maf2, uint64_t n_ind, bool ignore_miss_data, bool log_scale){
-  uint64_t i;
+uint64_t haplo_freq(double hap_freq[4], double *loglkl, uint64_t *n, double **gl1, double **gl2, double maf1, double maf2, uint64_t n_ind, bool ignore_miss_data, bool log_scale){
   double hap_freq_last[4];
 
   if(maf1 < 0 || maf1 > 1 || maf2 < 0 || maf2 > 1)
@@ -996,7 +1014,8 @@ uint64_t haplo_freq(double hap_freq[4], double *loglkl, uint64_t *n, uint64_t *n
   hap_freq[3] = maf1 * maf2;             // P_ba
 
   // iteration
-  for(i = 0; i < ITER_MAX; i++) {
+  uint64_t n_iter;
+  for(n_iter = 0; n_iter < ITER_MAX; n_iter++) {
     double eps = 0;
     memcpy(hap_freq_last, hap_freq, 4 * sizeof(double));
     if(log_scale)
@@ -1013,8 +1032,7 @@ uint64_t haplo_freq(double hap_freq[4], double *loglkl, uint64_t *n, uint64_t *n
       break;
   }
 
-  *n_iter = i;
-  return 0;
+  return n_iter;
 }
 
 
