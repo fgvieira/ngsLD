@@ -90,15 +90,16 @@ For more advanced options, please check script help (`perl scripts/prune_graph.p
 #### LD decay
 If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts/fit_LDdecay.R` to fit LD decay models for ![r^2](http://latex.codecogs.com/png.latex?r^2) ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and ![D'](http://latex.codecogs.com/png.latex?D') ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)) over physical (or genetic) distance.
 
-There are two models implemented for ![r^2](http://latex.codecogs.com/png.latex?r^2) and one for ![D'](http://latex.codecogs.com/png.latex?D') decay. Briefly, the first is derived by adjusting the expected ![r^2](http://latex.codecogs.com/png.latex?r^2) under a drift-recombination equilibrium for finite samples sizes and low level of mutation ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052)):
+There are two models implemented for ![r^2](http://latex.codecogs.com/png.latex?r^2) and one for ![D'](http://latex.codecogs.com/png.latex?D') decay. Briefly, the first is derived by adjusting the expected ![r^2](http://latex.codecogs.com/png.latex?r^2) under a drift-recombination equilibrium for finite samples sizes and low level of mutation ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052)) with a single parameter (rate of decay):
 
 ![E_r^2](http://latex.codecogs.com/png.latex?E\left[r^2\right]=\left[\frac{10&plus;C}{(2&plus;C)(11&plus;C)}\right]\cdot\left[1&plus;\frac{(3&plus;C)(12&plus;12C&plus;C^2)}{n(2&plus;C)(11&plus;C)}\right])
 
-The second formulation is an extension of the [Sved, 1971](https://www.ncbi.nlm.nih.gov/pubmed/5170716) model (expected ![r^2](http://latex.codecogs.com/png.latex?r^2) under drift-recombination equilibrium) to account for the range of observed ![r^2](http://latex.codecogs.com/png.latex?r^2) values:
+The second formulation is an extension of the [Sved, 1971](https://www.ncbi.nlm.nih.gov/pubmed/5170716) model (expected ![r^2](http://latex.codecogs.com/png.latex?r^2) under drift-recombination equilibrium) with three parameters (rate of decay, maximum observed ![r^2](http://latex.codecogs.com/png.latex?r^2) and minimum observed ![r^2](http://latex.codecogs.com/png.latex?r^2)) to account for the range of observed ![r^2](http://latex.codecogs.com/png.latex?r^2) values:
 
 ![E_r^2](http://latex.codecogs.com/png.latex?E\left[r^2\right]=\frac{r^2_{high}-r^2_{low}}{1&plus;C}&plus;r^2_{low})
 
-For ![D'](http://latex.codecogs.com/png.latex?D'), we fit the expectation derived by [Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/), assuming a recombination rate of ![cm-Mb](http://latex.codecogs.com/png.latex?1cm=1Mb) and fixing ![D'0_1](http://latex.codecogs.com/png.latex?D'_0=1):
+where the rate of decay ![C](http://latex.codecogs.com/png.latex?C=4N_e\rho).
+For ![D'](http://latex.codecogs.com/png.latex?D'), we fit the expectation derived by [Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/), assuming a recombination rate of ![cm-Mb](http://latex.codecogs.com/png.latex?1cm=1Mb) and fixing ![D'0_1](http://latex.codecogs.com/png.latex?D'_0=1), resulting also on a three parameters' model (rate of decay, maximum ![D'](http://latex.codecogs.com/png.latex?D') and minimum ![D'](http://latex.codecogs.com/png.latex?D')):
 
 ![E_D'](http://latex.codecogs.com/png.latex?E\left[D'\right]=D'_{low}&plus;(D'_{high}-D'_{low})\cdot&space;D'_0&space;\cdot&space;(1-\theta)^t)
 
@@ -108,13 +109,14 @@ For more information, please refer to the online published supplementary data.
 
 * `--ld_files FILE`: file with list of LD files to fit and plot (if ommited, can be read from STDIN)
 * `--out`: Name of output plot
+* `--n_ind`: Only relevant when fitting ![r^2](http://latex.codecogs.com/png.latex?r^2) decay to specify the first model
 
 For more advanced options, please check script help (`Rscript --vanilla --slave scripts/fit_LDdecay.R --help`). The shape of the decay curve can give valuable insight into the sample's biology (e.g.):
 * `Intersect` (high): small Ne (or bottleneck), natural selection (local LD)*, non-random mating (or inbreeding), recent admixture
 * `Decay Rate` (high): large Ne (or population expansion)*, high mutation rate*, high recombination rate*, random mating (or no inbreeding)*, not recently admixture
 * `Asymptote` (high): population structure*, small sample size*
 
-NOTE: Please keep in mind that these are just general trends, and that it all depends on the biologu/genetics of the sample. Since LD is influenced by many factors, it is usually less straightforward to derive exact predictions from it.
+NOTE: Please keep in mind that these are just general trends, and that it all depends on the biology/genetics of the sample. Since LD is influenced by many factors, it is usually less straightforward to derive exact predictions from it.
 
 ##### LD blocks
 To plot LD blocks, we also provide a small script as an example for how it can be easily done in `R` using the `LDheatmap` package (by default, ![r^2](http://latex.codecogs.com/png.latex?r^2) is plotted).

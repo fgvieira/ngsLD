@@ -22,7 +22,7 @@ option_list <- list(
   make_option(c('--header'), action='store_true', type='logical', default=FALSE, help='Input file has header'),
   make_option(c('--col'), action='store', type='numeric', default=3, help='Which column is distance between sites? [%default]'),
   make_option(c('--ld'), action='store', type='character', default="r2", help='Which LD stats to plot (r2pear, D, Dp, r2) [%default]'),
-  make_option(c('--n_ind'), action='store', type='numeric', default=0, help='How many individuals per-sample (for r^2 fitting correction)?'),
+  make_option(c('--n_ind'), action='store', type='numeric', default=0, help='Number of individuals (for 1-parameter r^2 fitting correction)?'),
   make_option(c('-r', '--use_recomb_rate'), action='store_true', type='logical', default=FALSE, help='Assume constant recombination rate. [%default]'),
   make_option(c('--recomb_rate'), action='store', type='numeric', default=1, help='Recombination rate (or probability of recombination between adjacent sites in cM/Mb) to calculate genetic distances from physical distances. It is assumed to be constant throughout the whole dataset and, for human datasets, a common rule-of-thumb value is 1cM/Mb (1e-6). [%default]'),
   make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis. [%default]'),
