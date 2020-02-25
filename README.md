@@ -99,7 +99,7 @@ The second formulation is an extension of the [Sved, 1971](https://www.ncbi.nlm.
 ![E_r^2](http://latex.codecogs.com/png.latex?E\left[r^2\right]=\frac{r^2_{high}-r^2_{low}}{1&plus;C}&plus;r^2_{low})
 
 where the rate of decay ![C](http://latex.codecogs.com/png.latex?C=4N_e\rho).
-For ![D'](http://latex.codecogs.com/png.latex?D'), we fit the expectation derived by [Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/), assuming a recombination rate of ![cm-Mb](http://latex.codecogs.com/png.latex?1cm=1Mb) and fixing ![D'0_1](http://latex.codecogs.com/png.latex?D'_0=1), resulting also on a three parameters' model (rate of decay, maximum ![D'](http://latex.codecogs.com/png.latex?D') and minimum ![D'](http://latex.codecogs.com/png.latex?D')):
+For ![D'](http://latex.codecogs.com/png.latex?D'), we fit the expectation derived by [Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/), assuming a recombination rate of ![cm-Mb](http://latex.codecogs.com/png.latex?1cm=1Mb) and fixing ![D'0_1](http://latex.codecogs.com/png.latex?D'_0=1), resulting also on a three parameter model (rate of decay, maximum ![D'](http://latex.codecogs.com/png.latex?D') and minimum ![D'](http://latex.codecogs.com/png.latex?D')):
 
 ![E_D'](http://latex.codecogs.com/png.latex?E\left[D'\right]=D'_{low}&plus;(D'_{high}-D'_{low})\cdot&space;D'_0&space;\cdot&space;(1-\theta)^t)
 
