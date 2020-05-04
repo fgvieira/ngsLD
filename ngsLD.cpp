@@ -118,7 +118,7 @@ int main (int argc, char** argv) {
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Getting sites coordinates\n");
   if(pars->pos){
-    pars->pos_dist = read_pos(pars->pos, pars->n_sites);
+    pars->pos_dist = read_dist(pars->pos, pars->n_sites);
     if(pars->verbose >= 6)
       for(uint64_t s = 0; s < pars->n_sites; s++)
 	fprintf(stderr, "%lu\t%f\n", s, pars->pos_dist[s]);

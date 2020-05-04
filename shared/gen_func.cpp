@@ -219,24 +219,27 @@ gzFile open_gzfile(const char* name, const char* mode, uint64_t buf_size){
 
 
 // Read data from file and place into array
-char **read_file(const char *in_file, uint64_t offset, uint64_t n_lines, uint64_t buff_size){
+uint64_t read_file(const char *in_file, char*** out_ptr, uint64_t offset, uint64_t n_rows, uint64_t buff_size){
   uint64_t cnt = 0;
   char buf[buff_size];
-  char **ptr = init_ptr(n_lines, 0, (const char*) '\0');
+  char** ptr = NULL;
 
   // Open file
   gzFile in_file_fh = open_gzfile(in_file, "r");
   if(in_file_fh == NULL)
     error(__FUNCTION__, "cannot open file!");
 
-  for(cnt = 0; cnt < n_lines && !gzeof(in_file_fh); cnt++){
+  for(cnt = 0; cnt < n_rows; cnt++){
     buf[0] = '\0';
     // Read line from file
     gzgets(in_file_fh, buf, buff_size);
+    // Check for EOF
+    if(gzeof(in_file_fh))
+      break;
     // Remove trailing newline
     chomp(buf);
     // Check if empty
-    if(strlen(buf) == 0){
+    if(strlen(buf) == 0 || buf[0] == '#'){
       cnt--;
       continue;
     }
@@ -246,22 +249,28 @@ char **read_file(const char *in_file, uint64_t offset, uint64_t n_lines, uint64_
       offset--;
       continue;
     }
+    // Realloc
+    ptr = (char**) realloc(ptr, (cnt+1) * sizeof(char*));
+    if(ptr == NULL)
+      error(__FUNCTION__, "could not realloc memory!");
     // Alloc memory and copy line
     ptr[cnt] = init_ptr(strlen(buf)+1, buf);
   }
 
-  if(cnt != n_lines)
+  if(n_rows != INF && n_rows != ++cnt)
     error(__FUNCTION__, "could not read specified number of lines!");
 
+  *out_ptr = ptr;
   gzclose(in_file_fh);
-  return ptr;
+  return cnt;
 }
 
 
-
+/*
 // Read data from file and place into array double
 double **read_file(const char *in_file, uint64_t offset, uint64_t n_lines, int n_cols, uint64_t buff_size){
-  char **tmp = read_file(in_file, offset, n_lines, buff_size);
+  char **tmp;
+  uint64_t n_rows = read_file(in_file, &tmp);
   if(tmp == NULL)
     return NULL;
 
@@ -273,7 +282,7 @@ double **read_file(const char *in_file, uint64_t offset, uint64_t n_lines, int n
   free_ptr((void**) tmp, n_lines);
   return ptr;
 }
-
+*/
 
 
 // New strtok function to allow for empty ("") separators
