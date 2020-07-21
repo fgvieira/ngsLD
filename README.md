@@ -50,7 +50,7 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--log_scale`: is the input in log-scale?
 * `--n_ind INT`: sample size (number of individuals).
 * `--n_sites INT`: total number of sites.
-* `--pos` FILE: input file with site coordinates (one per line), where the 1st column stands for the chromosome/contig and the 2nd for the position (bp); remaining columns will be ignored but included in output.
+* `--pos(H)` FILE: input file with site coordinates (one per line), where the 1st column stands for the chromosome/contig and the 2nd for the position (bp); remaining columns will be ignored but included in output; `--posH` assumes there is a header.
 * `--max_kb_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. If set to 0 (zero) will perform all comparisons. [100]
 * `--max_snp_dist INT`: maximum distance between SNPs (in number of SNPs) to calculate LD. If set to 0 (zero) will perform all comparisons. [0]
 * `--min_maf DOUBLE`: minimum SNP minor allele frequency. [0.001]
