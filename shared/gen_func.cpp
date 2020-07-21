@@ -218,7 +218,17 @@ gzFile open_gzfile(const char* name, const char* mode, uint64_t buf_size){
 
 
 
-// Read data from file and place into array
+/*
+Read data from file and place into array
+  in_file    : input file to read
+  out_ptr    : char*** where to store data
+  offset     : which line to start reading
+  n_rows     : how many lines to read
+  buff_size  : buffers size
+
+  RETURNS
+    number of lines read
+*/
 uint64_t read_file(const char *in_file, char*** out_ptr, uint64_t offset, uint64_t n_rows, uint64_t buff_size){
   uint64_t cnt = 0;
   char buf[buff_size];

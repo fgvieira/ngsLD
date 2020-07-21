@@ -109,12 +109,21 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool *in_logscale
 
 
 
-int read_split(char *in_file, char*** out, uint64_t* n_rows, uint64_t* n_cols, const char* sep){
+/*
+Function to read text file and split
+  in_file           : input file name to read from
+  out               : char*** to store output
+  n_rows            : variable to store number of rows read
+  n_cols            : variable to store number of columns read
+  offset            : number of initial lines to skip
+  sep               : separator char
+*/
+int read_split(char *in_file, char*** out, uint64_t* n_rows, uint64_t* n_cols, uint64_t offset, const char* sep){
   char** buf;
 
   // Read file
   *n_cols = 0;
-  *n_rows = read_file(in_file, &buf);
+  *n_rows = read_file(in_file, &buf, offset);
   if(buf == NULL)
     error(__FUNCTION__, "cannot open file!");
 
@@ -136,7 +145,17 @@ int read_split(char *in_file, char*** out, uint64_t* n_rows, uint64_t* n_cols, c
 
 
 
-double* read_dist(char *in_pos, uint64_t n_sites){
+/*
+Function to read text file and split
+  in_pos            : input POS file name to read from
+  offset            : number of initial lines to skip
+  n_sites           : number of sites to read
+
+  RETURN
+    array of dist between sites
+*/
+double* read_dist(char *in_pos, uint64_t offset, uint64_t n_sites){
+  uint64_t n_rows = 0;
   uint64_t n_fields = 0;
 
   // Allocate memory for POS
@@ -145,9 +164,11 @@ double* read_dist(char *in_pos, uint64_t n_sites){
   char ***buf = init_ptr(n_sites, 0, 0, (const char*) '\0');
 
   // Read file
-  read_split(in_pos, buf, &n_sites, &n_fields);
+  read_split(in_pos, buf, &n_rows, &n_fields, offset);
   if(buf == NULL)
-    error(__FUNCTION__, "cannot open file!");
+    error(__FUNCTION__, "cannot open POS file!");
+  if(n_rows != n_sites)
+    error(__FUNCTION__, "wrong number of lines in POS file!");
   if(n_fields < 2)
     error(__FUNCTION__, "wrong POS file format!");
 

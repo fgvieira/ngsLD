@@ -10,7 +10,8 @@ void init_pars(params *pars) {
   pars->in_logscale = false;
   pars->n_ind = 0;
   pars->n_sites = 0;
-  pars->pos = NULL;
+  pars->in_pos = NULL;
+  pars->in_pos_header = false;
   pars->max_kb_dist = 100;
   pars->max_snp_dist = 0;
   pars->min_maf = 0.001;
@@ -38,7 +39,8 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
       {"log_scale", no_argument, NULL, 'l'},
       {"n_ind", required_argument, NULL, 'n'},
       {"n_sites", required_argument, NULL, 's'},
-      {"pos", required_argument, NULL, 'Z'},
+      {"pos", required_argument, NULL, 'a'},
+      {"posH", required_argument, NULL, 'A'},
       {"max_kb_dist", required_argument, NULL, 'd'},
       {"max_snp_dist", required_argument, NULL, 'D'},
       {"min_maf", required_argument, NULL, 'f'},
@@ -74,8 +76,13 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
     case 's':
       pars->n_sites = atoi(optarg);
       break;
-    case 'Z':
-      pars->pos = optarg;
+    case 'a':
+      pars->in_pos = optarg;
+      pars->in_pos_header = false;
+      break;
+    case 'A':
+      pars->in_pos = optarg;
+      pars->in_pos_header = true;
       break;
     case 'd':
       pars->max_kb_dist = atoi(optarg);
@@ -125,13 +132,14 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
 
   if(pars->verbose >= 1) {
     fprintf(stderr, "==> Input Arguments:\n");
-    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s\n\tmax_kb_dist (kb): %lu\n\tmax_snp_dist: %lu\n\tmin_maf: %f\n\tignore_miss_data: %s\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\trnd_sample: %f\n\tseed: %lu\n\textend_out: %s\n\tout: %s\n\tn_threads: %d\n\tverbose: %d\n\tversion: %s (%s @ %s)\n\n",
+    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s (%s header)\n\tmax_kb_dist (kb): %lu\n\tmax_snp_dist: %lu\n\tmin_maf: %f\n\tignore_miss_data: %s\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\trnd_sample: %f\n\tseed: %lu\n\textend_out: %s\n\tout: %s\n\tn_threads: %d\n\tverbose: %d\n\tversion: %s (%s @ %s)\n\n",
 	    pars->in_geno,
 	    pars->in_probs ? "true":"false",
 	    pars->in_logscale ? "true":"false",
 	    pars->n_ind,
 	    pars->n_sites,
-	    pars->pos,
+	    pars->in_pos,
+	    pars->in_pos_header ? "WITH" : "WITHOUT",
 	    pars->max_kb_dist,
 	    pars->max_snp_dist,
 	    pars->min_maf,
@@ -161,7 +169,7 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
     error(__FUNCTION__, "number of individuals (--n_ind) missing!");
   if(pars->n_sites == 0)
     error(__FUNCTION__, "number of sites (--n_sites) missing!");
-  if(pars->pos == NULL && pars->max_kb_dist > 0)
+  if(pars->in_pos == NULL && pars->max_kb_dist > 0)
     error(__FUNCTION__, "position file necessary in order to filter by maximum distance!");
   if(pars->min_maf < 0 || pars->min_maf > 1)
     error(__FUNCTION__, "minimum allele frequency must be in [0,1]!");

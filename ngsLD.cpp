@@ -117,12 +117,12 @@ int main (int argc, char** argv) {
   // Read positions from file
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Getting sites coordinates\n");
-  if(pars->pos){
-    pars->pos_dist = read_dist(pars->pos, pars->n_sites);
+  if(pars->in_pos){
+    pars->pos_dist = read_dist(pars->in_pos, (pars->in_pos_header ? 1 : 0), pars->n_sites);
     if(pars->verbose >= 6)
       for(uint64_t s = 0; s < pars->n_sites; s++)
 	fprintf(stderr, "%lu\t%f\n", s, pars->pos_dist[s]);
-    if(read_file(pars->pos, &pars->labels) != pars->n_sites)
+    if(read_file(pars->in_pos, &pars->labels, (pars->in_pos_header ? 1 : 0)) != pars->n_sites)
       error(__FUNCTION__, "invalid number of lines in POS file");
     // Fix labels...
     char* ptr;

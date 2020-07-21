@@ -15,7 +15,8 @@ typedef struct {
   bool in_logscale;
   uint64_t n_ind;
   uint64_t n_sites;
-  char *pos;
+  char *in_pos;
+  bool in_pos_header;
   uint64_t max_kb_dist;
   uint64_t max_snp_dist;
   double min_maf;
