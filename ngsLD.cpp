@@ -230,7 +230,7 @@ int main (int argc, char** argv) {
 void calc_pair_LD (void *pth){
   pth_struct* p = (pth_struct*) pth;
   uint64_t s1 = p->site;
-  uint64_t s2 = s1;
+  uint64_t s2 = s1 + 1;
   double dist = 0;
   double r2pear, D, Dp, r2;
   double hap_freq[4], loglkl;
@@ -239,11 +239,15 @@ void calc_pair_LD (void *pth){
 
   // Calc LD for pairs of SNPs < max_kb_dist
   while (s2 < p->pars->n_sites){
-    s2++;
     dist += p->pars->pos_dist[s2];
 
-    if(p->pars->verbose > 8)
-      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%.0f\t%f\t%f\t%s\t%s\n", s1, p->pars->labels[s1], s2, p->pars->labels[s2], dist, p->pars->maf[s1], p->pars->maf[s2], join(p->pars->expected_geno[s1],p->pars->n_ind,","), join(p->pars->expected_geno[s2],p->pars->n_ind,","));
+    if(p->pars->verbose > 8) {
+      fprintf(stderr, "%lu\t%s\t%lu\t%s: ", s1, p->pars->labels[s1], s2, p->pars->labels[s2]);
+      fprintf(stderr, "\t[%f: %f,%f]", p->pars->min_maf, p->pars->maf[s1], p->pars->maf[s2]);
+      fprintf(stderr, "\t[%lu: %.0f]", p->pars->max_kb_dist*1000, dist);
+      fprintf(stderr, "\t[%lu: %lu]", p->pars->max_snp_dist, s2 - s1);
+      fprintf(stderr, "\t%s\t%s\n", join(p->pars->expected_geno[s1],p->pars->n_ind,","), join(p->pars->expected_geno[s2],p->pars->n_ind,","));
+    }
 
     // Stop if current distance is greater than max_kb_dist
     if(p->pars->max_kb_dist > 0 && p->pars->max_kb_dist*1000 < dist)
@@ -262,7 +266,7 @@ void calc_pair_LD (void *pth){
       continue;
 
     if(p->pars->verbose > 8)
-      fprintf(stderr, "%lu\t%s\t%lu\t%s\t%lu\t%.0f\t%lu\t%f\t%f\t%f\n", s1, p->pars->labels[s1], s2, p->pars->labels[s2], p->pars->max_snp_dist, dist, p->pars->max_kb_dist*1000, p->pars->maf[s1], p->pars->maf[s2], p->pars->min_maf);
+      fprintf(stderr, "\tPASS\n");
 
 
 
@@ -286,6 +290,8 @@ void calc_pair_LD (void *pth){
 
 
     pthread_mutex_lock(&printf_mutex);
+    if(p->pars->verbose > 8)
+      fprintf(stderr, "==> Dumping results to file\n");
     // Print standard output: Locus1, Locus2, distance, r2pear, D, D', r2
     fprintf(p->pars->out_fh, "%s\t%s\t%.0f\t%f\t%f\t%f\t%f",
 	    p->pars->labels[s1],
@@ -296,7 +302,10 @@ void calc_pair_LD (void *pth){
 	    Dp,
 	    r2
 	    );
+
     if(p->pars->extend_out){
+      if(p->pars->verbose > 8)
+	fprintf(stderr, "==> Dumping extra results to file\n");
       // Calculate chi2 (Abecassis et al. 2001)
       float chi2 = 0;
       float freq_A = hap_freq[0] + hap_freq[1];
@@ -320,6 +329,7 @@ void calc_pair_LD (void *pth){
     }
     fprintf(p->pars->out_fh, "\n");
     pthread_mutex_unlock(&printf_mutex);
+    s2++;
   }
 
   // Free memory

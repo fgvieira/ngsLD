@@ -53,7 +53,7 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool *in_logscale
       n_fields = split(buf, (const char*) " \t", &t);
 
       // Check if header and skip
-      if(!n_fields){
+      if(!n_fields || (s == 0 && n_fields < n_ind * n_geno)){
 	fprintf(stderr, "> Header found! Skipping line...\n");
         if(s != 0){
           warn(__FUNCTION__, " header found but not on first line. Is this an error?");
@@ -63,8 +63,11 @@ double*** read_geno(char *in_geno, bool in_bin, bool in_probs, bool *in_logscale
 	continue;
       }
 
-      if(n_fields < n_ind * n_geno)
+      if(n_fields < n_ind * n_geno) {
+	fprintf(stderr, "\tline: %s\n\tt[0]: %f\n\tt[1]: %f\n", buf, t[0], t[1]);
+	fprintf(stderr, "\tn_line: %lu\n\tfields: %lu\n\tn_ind: %lu\n\tn_geno: %lu\n", s, n_fields, n_ind, n_geno);
 	error(__FUNCTION__, "wrong GENO file format. Less fields than expected!");
+      }
       
       // Use last "n_ind * n_geno" columns
       ptr = t + (n_fields - n_ind * n_geno);
