@@ -12,7 +12,7 @@ N_SITES=10000
 
 ##### Genotypes
 cat $SIM_DATA/testA.geno | perl -s -p -e 's/0 0/0/g; s/(\w) \1/2/g; s/\w \w/1/g; $n=s/2/2/g; tr/02/20/ if($n>$n_ind/2)' -- -n_ind=$N_IND | awk '{print "chrSIM\t"NR"\t"$0}' | gzip -cfn --best > testLD_T.geno.gz
-zcat testLD_T.geno.gz | awk 'BEGIN{cnt=1} pos > 10000 {pos=0; cnt++} {pos+=int(rand()*1000+1); print $1"_"cnt"\t"pos}' > testLD.pos
+zcat testLD_T.geno.gz | perl -an -e 'BEGIN{srand(12345)} if($pos > 10000) {$pos=0; $cnt++}; $pos += int(rand()*1000+1); print $F[0]."_".($cnt+1)."\t".$pos."\n"' > testLD.pos
 ../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_T.geno.gz --pos testLD.pos --max_kb_dist 20 --min_maf 0.05 --extend_out                               | sort -k 1,1V -k 2,2V > testLD_T.ld
 ../ngsLD --n_threads 10 --verbose 1 --n_ind $N_IND --n_sites $N_SITES --geno testLD_T.geno.gz --pos testLD.pos --max_kb_dist 20 --min_maf 0.05 --extend_out --rnd_sample 0.5 --seed 12345 | sort -k 1,1V -k 2,2V > testLD_Tr.ld
 
