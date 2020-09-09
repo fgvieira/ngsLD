@@ -51,8 +51,8 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--n_ind INT`: sample size (number of individuals).
 * `--n_sites INT`: total number of sites.
 * `--pos(H)` FILE: input file with site coordinates (one per line), where the 1st column stands for the chromosome/contig and the 2nd for the position (bp); remaining columns will be ignored but included in output; `--posH` assumes there is a header.
-* `--max_kb_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. If set to 0 (zero) will perform all comparisons. [100]
-* `--max_snp_dist INT`: maximum distance between SNPs (in number of SNPs) to calculate LD. If set to 0 (zero) will perform all comparisons. [0]
+* `--max_kb_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. Set to `0`(zero) to disable filter. [100]
+* `--max_snp_dist INT`: maximum distance between SNPs (in number of SNPs) to calculate LD. Set to `0` (zero) to disable filter. [0]
 * `--min_maf DOUBLE`: minimum SNP minor allele frequency. [0.001]
 * `--ignore_miss_data`: ignore missing genotype data from analyses.
 * `--call_geno`: call genotypes before running analyses.
@@ -73,6 +73,8 @@ It is advisable that SNPs be called first, since monomorphic sites are not infor
 
 ### Output
 `ngsLD` outputs a TSV file with LD results for all pairs of sites for which LD was calculated, where the first two columns are positions of the SNPs, the third column is the distance (in bp) between the SNPs, and the following 4 columns are the various measures of LD calculated (![r^2](http://latex.codecogs.com/png.latex?r^2) from pearson correlation between expected genotypes, ![D](http://latex.codecogs.com/png.latex?D) from EM algorithm, ![D'](http://latex.codecogs.com/png.latex?D') from EM algorithm, and ![r^2](http://latex.codecogs.com/png.latex?r^2) from EM algorithm). If the option `--extend_out` is used, then an extra 8 columns are printed with number of samples, minor allele frequency (MAF) of both loci, haplotype frequencies for all four haplotypes, and a chi2 (1 d.f.) for the strength of association ([Collins et al., 1999](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC24792/)).
+
+If both `--max_kb_dist` and `--max_snp_dist` are set to `0`, `ngsLD` will output all comparisons, even between different chromosomes/scaffolds/contigs.
 
 ### Possible analyses
 ##### LD pruning
