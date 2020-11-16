@@ -181,6 +181,12 @@ double logsum(double a, double b, double c, double d){
 }
 
 
+// Round double to a 'dec' decimal places
+double round_dec(double val, int dec){
+  dec = pow(10, dec);
+  return round(val * dec) / dec;
+} 
+
 
 // Remove trailing newlines from strings
 void chomp(char *str){

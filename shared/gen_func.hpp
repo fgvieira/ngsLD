@@ -50,6 +50,7 @@ double logsum(double*, uint64_t);
 double logsum(double, double);
 double logsum(double, double, double);
 double logsum(double, double, double, double);
+double round_dec(double, int = 2);
 void chomp(char*);
 gzFile open_gzfile(const char*, const char*, uint64_t = 10000);
 uint64_t read_file(const char*, char***, uint64_t = 0, uint64_t = INF, uint64_t = BUFF_LEN);
