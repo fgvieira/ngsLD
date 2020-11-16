@@ -74,7 +74,8 @@ int main (int argc, char** argv) {
     pars->out_fh = fopen(pars->out, "w");
   if(pars->out_fh == NULL)
     error(__FUNCTION__, "cannot open output file!");
-  //fprintf(pars->out_fh, "#site1\tsite2\tdist\tr^2_ExpG\tD\tD'\tr^2\n");
+  if(pars->out_header)
+    fprintf(pars->out_fh, "#site1\tsite2\tdist\tr^2_ExpG\tD\tD'\tr^2%s\n", pars->extend_out ? "\tsample_size\tmaf1\tmaf2\thap00\thap01\thap10\thap11\tchi2\tloglike\tnIter" : "");
 
 
 

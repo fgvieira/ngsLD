@@ -61,7 +61,7 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--rnd_sample DOUBLE`: proportion of comparisons to randomly sample. [1]
 * `--seed INT`: random number generator seed for random sampling (--rnd_sample).
 * `--extend_out`: print extended output (see below).
-* `--out FILE`: output file name. [stdout]
+* `--out(H) FILE`: output file name; `--outH` prints header. [stdout]
 * `--n_threads INT`: number of threads to use. [1]
 * `--verbose INT`: selects verbosity level. [1]
 

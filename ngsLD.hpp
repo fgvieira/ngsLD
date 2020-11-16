@@ -28,6 +28,7 @@ typedef struct {
   uint64_t seed;
   bool extend_out;
   char *out;
+  bool out_header;
   FILE *out_fh;
   uint n_threads;
   uint verbose;
