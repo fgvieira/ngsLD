@@ -251,20 +251,37 @@ void calc_pair_LD (void *pth){
     }
 
     // Stop if current distance is greater than max_kb_dist
-    if(p->pars->max_kb_dist > 0 && p->pars->max_kb_dist*1000 < dist)
+    if(p->pars->max_kb_dist > 0 && p->pars->max_kb_dist*1000 < dist) {
+      if(p->pars->verbose > 8)
+        fprintf(stderr, "\tMax dist (kb) exceeded: %f\n", dist / 1000);
       break;
+    }
     // Stop if current SNP is greater than max_snp_dist
-    if(p->pars->max_snp_dist > 0 && p->pars->max_snp_dist < s2 - s1)
+    if(p->pars->max_snp_dist > 0 && p->pars->max_snp_dist < s2 - s1) {
+      if(p->pars->verbose > 8)
+        fprintf(stderr, "\tMax number of SNPs exceeded: %lu\n", s2 - s1);
       break;
+    }
     // Stop if site 1 is < min_maf
-    if(p->pars->maf[s1] < p->pars->min_maf)
+    if(p->pars->maf[s1] < p->pars->min_maf) {
+      if(p->pars->verbose > 8)
+        fprintf(stderr, "\tLow MAF: %f\n", p->pars->maf[s1]);
       break;
+    }
     // Skip if site 2 is < min_maf
-    if(p->pars->maf[s2] < p->pars->min_maf)
+    if(p->pars->maf[s2] < p->pars->min_maf) {
+      if(p->pars->verbose > 8)
+	fprintf(stderr, "\tLow MAF: %f\n", p->pars->maf[s2]);
+      s2++;
       continue;
+    }
     // Random sampling
-    if(draw_rnd(p->rnd_gen, 0, 1) > p->pars->rnd_sample)
+    if(draw_rnd(p->rnd_gen, 0, 1) > p->pars->rnd_sample) {
+      if(p->pars->verbose > 8)
+	fprintf(stderr, "\tRandom sampling\n");
+      s2++;
       continue;
+    }
 
     if(p->pars->verbose > 8)
       fprintf(stderr, "\tPASS\n");
@@ -277,11 +294,6 @@ void calc_pair_LD (void *pth){
     // Calculate LD from haplotype frequencies (estimated through an EM)
     // Estimate haplotype frequencies
     n_iter = haplo_freq(hap_freq, &loglkl, &n_ind_data, p->pars->geno_lkl[s1], p->pars->geno_lkl[s2], p->pars->maf[s1], p->pars->maf[s2], p->pars->n_ind, p->pars->ignore_miss_data, false);
-    // Round hap_freq to 6 decimals
-    hap_freq[0] = round_dec(hap_freq[0], 6);
-    hap_freq[1] = round_dec(hap_freq[1], 6);
-    hap_freq[2] = round_dec(hap_freq[2], 6);
-    hap_freq[3] = round_dec(hap_freq[3], 6);
     // Allele frequencies
     double maf[2];
     maf[0] = 1 - (hap_freq[0] + hap_freq[1]);
@@ -291,9 +303,11 @@ void calc_pair_LD (void *pth){
     // or
     //D = hap_freq[0] - (1-maf[0]) * (1-maf[1]);               // P_BA - P_B * P_A
     // Calculate D'
-    Dp = D / (D < 0 ? -min(maf[0]*maf[1], (1-maf[0])*(1-maf[1])) : min(maf[0]*(1-maf[1]), (1-maf[0])*maf[1]) );
+    Dp = D / ( D < 0 ? -min(maf[0]*maf[1], (1-maf[0])*(1-maf[1])) : min(maf[0]*(1-maf[1]), (1-maf[0])*maf[1]) );
+    Dp = ( maf[0] < p->pars->min_maf || maf[1] < p->pars->min_maf ? nan("") : Dp );
     // calculate r^2
     r2 = pow(D / sqrt(maf[0] * maf[1] * (1-maf[0]) * (1-maf[1])), 2);
+    r2 = ( maf[0] < p->pars->min_maf || maf[1] < p->pars->min_maf ? nan("") : r2 );
 
 
 
