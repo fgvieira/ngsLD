@@ -59,9 +59,11 @@ use strict;
 use Getopt::Long;
 use Graph::Easy;
 use Math::BigFloat;
+use List::AllUtils qw(max);
+use Scalar::Util::Numeric qw(isint isfloat);
 use IO::Zlib;
 
-my ($in_file, $subset_file, $max_kb_dist, $field_dist, $min_weight, $field_weight, $weight_type, $print_excl, $keep_heavy, $out_file, $debug);
+my ($in_file, $subset_file, $max_kb_dist, $field_dist, $min_weight, $field_weight, $weight_type, $weight_precision, $print_excl, $keep_heavy, $out_file, $debug);
 my ($graph, @excl, %subset);
 
 $in_file = '-';
@@ -70,27 +72,31 @@ $max_kb_dist = '+inf';
 $field_weight = 7;
 $min_weight = 0;
 $weight_type = 'a';
+$weight_precision = 4;
 $out_file = '-';
 $debug = 0;
 
 # Parse args
 GetOptions('h|help'             => sub { exec('perldoc',$0); exit; },
            'i|in_file=s'        => \$in_file,
-	   's|subset:s'         => \$subset_file,
-	   'field_dist:s'       => \$field_dist,
-	   'd|max_kb_dist:s'    => \$max_kb_dist,
-	   'field_weight:s'     => \$field_weight,
+           's|subset:s'         => \$subset_file,
+           'field_dist:s'       => \$field_dist,
+           'd|max_kb_dist:s'    => \$max_kb_dist,
+           'field_weight:s'     => \$field_weight,
            'r|min_weight:s'     => \$min_weight,
-	   'weight_type:s'      => \$weight_type,
-	   'x|print_excl:s'     => \$print_excl,
-	   'keep_heavy!'        => \$keep_heavy,
-	   'o|out:s'            => \$out_file,
-	   'debug!'             => \$debug,
+           'weight_type:s'      => \$weight_type,
+           'weight_precision:i' => \$weight_precision,
+           'x|print_excl:s'     => \$print_excl,
+           'keep_heavy!'        => \$keep_heavy,
+           'o|out:s'            => \$out_file,
+           'debug!'             => \$debug,
     );
 
 
 # Convert --max_kb_dist to base pairs
 my $max_dist = $max_kb_dist * 1000;
+# Convert precision
+$weight_precision = 10 ** $weight_precision;
 
 
 # Parse subset file
@@ -111,6 +117,7 @@ $FILE->open($in_file, "r") || die("ERROR: cannot open input file ".$in_file.": "
 # Build graph #
 ###############
 my $cnt = 0;
+my $edge;
 $graph = Graph::Easy->new();
 $graph->timeout(60);
 print(STDERR "### Reading data from ".$in_file."\n");
@@ -120,19 +127,24 @@ while(<$FILE>){
     my @interact = split(m/\t/, $_);
     my $weight = $interact[$field_weight-1];
     my $dist = $interact[$field_dist-1];
-    die("ERROR: invalid entry in input file ".$in_file." line ".$cnt.": ".$!."\n") if($#interact < 1 || !defined($weight) || !defined($dist));
+    die("ERROR: invalid entry in input file ".$in_file." line ".$cnt.": \n".$_."\n") if($#interact < max($field_weight, $field_dist) - 1 ||
+                                                                                        !defined($weight) || !isfloat($weight) ||
+                                                                                        !defined($dist) || !isint($dist)
+        );
 
     $graph->add_node($interact[0]) if(!$subset_file || defined($subset{$interact[0]}));
     $graph->add_node($interact[1]) if(!$subset_file || defined($subset{$interact[1]}));
 
-    # Use the absolute weight value
-    $weight = abs($weight) if($weight_type eq 'a');
+    # Check if edge already exists
+    die("ERROR: Edge between nodes ".$interact[0]." and ".$interact[1]." already exists!\n") if( $graph->edge($interact[0], $interact[1]) || $graph->edge($interact[1], $interact[0]) );
 
     # Skip if NaN, +Inf, -Inf, ...
     my $x = Math::BigFloat->new($weight);
     next if($x->is_nan() || $x->is_inf('+') || $x->is_inf('-'));
     # Skip SNP if distance more than $max_dist
     next if($dist > $max_dist);
+    # Use the absolute weight value
+    $weight = abs($weight) if($weight_type eq 'a');
     # Skip SNP if weight less than $min_weight
     next if($weight < $min_weight);
     # Skip if not on the subset file
@@ -140,33 +152,13 @@ while(<$FILE>){
 
     # Use weights or just the number of connections?
     $weight = 1 if($weight_type eq 'n');
-
-    # Check if edge already exists
-    my $edge;
-    if( ($edge = $graph->edge($interact[0], $interact[1])) ||
-        ($edge = $graph->edge($interact[1], $interact[0])) ){
-
-	my $edge_weight = $edge->label;
-	print(STDERR "### Edge between nodes ".$interact[0]." and ".$interact[1]." already exists with weight = ".$edge_weight.".\n") if($debug);
-
-	# Check 'dist' attribute
-	my $edge_dist = $edge->get_attribute('comment');
-	die("ERROR: distance between nodes ".$interact[0]." and ".$interact[1]." is not consistent across records (".$dist." != ".$edge_dist.")!") if($dist != $edge_dist);
-
-	# Update 'label' attribute to store weight
-	if($weight > $edge_weight){
-	    print(STDERR "# Edge will be replaced by another with weight = ".$weight.".\n") if($debug);
-	    $edge->set_attribute('label', $weight);
-	}
-    }else{
-	$edge = $graph->add_edge($interact[0], $interact[1]);
-	$edge->undirected(1);
-
-	# Use 'label' attribute to store weight
-	$edge->set_attribute('label', $weight);
-	# Use 'comment' attribute to store distance
-	$edge->set_attribute('comment', $dist);
-    }
+    # Add edge to graph
+    $edge = $graph->add_edge($interact[0], $interact[1]);
+    $edge->undirected(1);
+    # Use 'label' attribute to store weight as integer (to avoid precision issues)
+    $edge->set_attribute('label', int($weight * $weight_precision));
+    # Use 'comment' attribute to store distance
+    $edge->set_attribute('comment', $dist);
 }
 $FILE->close if($in_file ne '-');
 
@@ -180,13 +172,18 @@ open(OUT, ">".$out_file) || die("ERROR: cannot open OUTPUT file ".$out_file.": "
 my $cnt = 0;
 foreach my $node ($graph->nodes){
     if($node->edges == 0){
-	$cnt++;
-	print(OUT $node->label."\n");
-	$graph->del_node($node);
+        $cnt++;
+        print(OUT $node->label."\n");
+        $graph->del_node($node);
     }
 }
-print(STDERR "### Found ".$cnt." unlinked nodes; these will be printed and removed from graph now\n") if($cnt);
+print(STDERR "### Found ".$cnt." unlinked nodes; these will be printed and removed from graph now!\n") if($cnt);
 
+
+
+###############
+# Prune graph #
+###############
 # Print stats for actually connected nodes and edges
 print(STDERR "### Pruning graph (".$graph->edges." edges between ".$graph->nodes." nodes)\n");
 
@@ -198,22 +195,20 @@ if($debug){
 }
 
 
-###############
-# Prune graph #
-###############
 @excl = &prune_graph_idx($graph, $keep_heavy, $debug);
+
 
 # Print EXCLUDED nodes to file
 if($print_excl){
     # Open file to store EXCLUDED nodes
     if(substr($print_excl, -3) eq '.gz'){
-	my $EXCL = IO::Zlib->new($print_excl, "wb9") || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
-	print($EXCL $_."\n") for(@excl);
-	$EXCL->close;
+        my $EXCL = IO::Zlib->new($print_excl, "wb9") || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
+        print($EXCL $_."\n") for(@excl);
+        $EXCL->close;
     }else{
-	open(EXCL, ">".$print_excl) || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
-	print(EXCL $_."\n") for(@excl);
-	close(EXCL);
+        open(EXCL, ">".$print_excl) || die("ERROR: cannot open EXCL file ".$print_excl.": ".$!."!");
+        print(EXCL $_."\n") for(@excl);
+        close(EXCL);
     }
 }
 
@@ -239,12 +234,12 @@ exit(0);
 # prune graph (keep/remove most connected node) by searching the graph - SLOW!
 sub prune_graph($$$){
     my ($graph, $keep_heavy, $debug) = @_;
-    my ($most_heavy_node, $most_heavy_node_weight, @excl);
+    my ($cnt, $most_heavy_node, $most_heavy_node_weight, @excl);
 
     while(1){
         # Find top-connected node
         $most_heavy_node_weight = 0;
-        foreach my $node ($graph->nodes){
+        foreach my $node ( sort{lc($a->name) cmp lc($b->name)} $graph->nodes ){
             my $node_weight = 0;
             foreach my $edge ($node->edges){
                 $node_weight += $edge->label;
@@ -255,31 +250,34 @@ sub prune_graph($$$){
             }
         }
 
-	# If top node has no edges, break!
-	last if($most_heavy_node_weight <= 0);
+        # If top node has no edges, break!
+        last if($most_heavy_node_weight <= 0);
 
-	if($keep_heavy){
-	    foreach my $most_heavy_node_edge ($graph->node($most_heavy_node)->edges){
-		foreach my $node_child ($most_heavy_node_edge->nodes){
-		    if($most_heavy_node ne $node_child->name){
-			# Delete node from graph
-			$graph->del_node($node_child);
-			# Add node to the list of EXCL
-			push(@excl, $node_child->name);
-		    }
-		}
-	    }
-	}else{
-	    # Delete node from graph
+        if($keep_heavy){
+            foreach my $edge ($graph->node($most_heavy_node)->edges){
+                foreach my $node_child ($edge->nodes){
+                    next if($most_heavy_node eq $node_child->name);
+                    # Delete node from graph
+                    $graph->del_node($node_child);
+                    # Add node to the list of EXCL
+                    push(@excl, $node_child->name);
+                }
+            }
+        }else{
+            # Delete node from graph
             $graph->del_node($most_heavy_node);
             # Add node to the list of EXCL
             push(@excl, $most_heavy_node);
-	}
+        }
 
-	if($debug){
-	    print(STDERR "### Pruned network after processing most \"heavy\" node ".$most_heavy_node." (weight ".$most_heavy_node_weight."):\n");
-	    print(STDERR $graph->as_ascii);
-	}
+        if($debug){
+            print(STDERR "### Pruned network after processing most \"heavy\" node ".$most_heavy_node." (weight ".$most_heavy_node_weight."):\n");
+            print(STDERR $graph->as_ascii);
+        }
+
+        # Print report to STDERR
+        print(STDERR "# ".$cnt." nodes pruned...\n") unless($cnt == 0 || $cnt % 1e3);
+        $cnt++;
     }
 
     return @excl;
@@ -288,7 +286,7 @@ sub prune_graph($$$){
 # prune graph (keep/remove most connected node) using an index to speed up - FAST!
 sub prune_graph_idx($$$){
     my ($graph, $keep_heavy, $debug) = @_;
-    my (@nodes, $most_heavy_node, $most_heavy_node_weight, @excl, %nodes_idx);
+    my ($cnt, @linked_nodes, $most_heavy_node, $most_heavy_node_weight, @excl, %nodes_idx);
 
     ### Fill in Index table
     # For each node, stores how many connected nodes (edges) and its total weight
@@ -303,78 +301,74 @@ sub prune_graph_idx($$$){
 
     while(1){
         # Get ID of most "heavy" node
-        @nodes = grep {$nodes_idx{$_}{'n_edges'} > 0} keys(%nodes_idx);
-        $most_heavy_node = ( sort {$nodes_idx{$b}{'weight'} <=> $nodes_idx{$a}{'weight'} || lc($a) cmp lc($b)} @nodes )[0];
+        $most_heavy_node = ( sort{$nodes_idx{$b}{'weight'} <=> $nodes_idx{$a}{'weight'} || lc($a) cmp lc($b)} keys(%nodes_idx) )[0];
         $most_heavy_node_weight = $nodes_idx{$most_heavy_node}{'weight'};
 
         # If top node has no edges, break!
-        last if(!defined($most_heavy_node));
+        last if($most_heavy_node_weight <= 0);
 
-	# Print report to STDERR
-	print(STDERR "# ".($#nodes + 1)." linked nodes remaining ...\n") unless(($#nodes+1) % 1e4);
-
-	if($keep_heavy){
-	    foreach my $most_heavy_node_edge ($graph->node($most_heavy_node)->edges){
-                foreach my $node_child ($most_heavy_node_edge->nodes){
-                    if($most_heavy_node ne $node_child->name){
-			# Update Index table
-			foreach my $edge ($node_child->edges){
-			    foreach my $node ($edge->nodes){
-				$nodes_idx{$node->name}{'weight'} -= $edge->label;
-				$nodes_idx{$node->name}{'n_edges'}--;
-			    }
-			}
-
-                        # Delete node from graph
-                        $graph->del_node($node_child);
-			# Delete node from index
-			delete($nodes_idx{$node_child});
-                        # Add node to the list of EXCL
-                        push(@excl, $node_child->name);
-                    }
+        if($keep_heavy){
+            foreach my $edge ($graph->node($most_heavy_node)->edges){
+                foreach my $node_child ($edge->nodes){
+                    next if($most_heavy_node eq $node_child->name);
+                    # Delete node
+                    remove_node_idx($graph, \%nodes_idx, $node_child);
+                    # Add node to the list of EXCL
+                    push(@excl, $node_child->name);
                 }
             }
-	}else{
-            # Update Index table
-	    foreach my $edge ($graph->node($most_heavy_node)->edges){
-		foreach my $node ($edge->nodes){
-		    $nodes_idx{$node->name}{'weight'} -= $edge->label;
-		    $nodes_idx{$node->name}{'n_edges'}--;
-		}
-	    }
-
-            # Delete node from graph
-	    $graph->del_node($most_heavy_node);
-            # Delete node from index
-	    delete($nodes_idx{$most_heavy_node});
+        }else{
+            # Delete node
+            remove_node_idx($graph, \%nodes_idx, $most_heavy_node);
             # Add node to the list of EXCL
-	    push(@excl, $most_heavy_node);
-	}
+            push(@excl, $most_heavy_node);
+        }
 
         if($debug){
-            print(STDERR "### Pruned network after most \"heavy\" node ".$most_heavy_node." (weight ".$most_heavy_node_weight."):\n");
+            print(STDERR "### Pruned network after processing most \"heavy\" node ".$most_heavy_node." (weight ".$most_heavy_node_weight."):\n");
             print(STDERR $graph->as_ascii);
         }
+
+        # Print report to STDERR
+        @linked_nodes = grep {$nodes_idx{$_}{'n_edges'} > 0} keys(%nodes_idx);
+        print(STDERR "# ".$cnt." nodes pruned; ".($#linked_nodes + 1)." linked nodes remaining ...\n") unless($cnt == 0 || $cnt % 1e3);
+        $cnt++;
     }
 
     # Sanity check if all nodes have been checked/removed
     foreach my $node (keys(%nodes_idx)){
         if($nodes_idx{$node}{'n_edges'} != 0 ||
-           abs($nodes_idx{$node}{'weight'}) > 1e-10){
-            warn("WARNING: prunning done but node ".$node." still connected (".$nodes_idx{$node}{'weight'}." weight over ".$nodes_idx{$node}{'n_edges'}." edges)");
+           abs($nodes_idx{$node}{'weight'}) > 0){
+            warn("ERROR: prunning done but node ".$node." still connected (".($nodes_idx{$node}{'weight'}/$weight_precision)." weight over ".$nodes_idx{$node}{'n_edges'}." edges)");
         }
     }
     foreach my $node ($graph->nodes){
         if($node->edges != 0){
-            warn("WARNING: prunning done but node ".$node." still connected (".$node->edges." edges)");
-        }
-    }
-
-    if($debug){
-        foreach my $node (keys(%nodes_idx)){
-            print(STDERR $node."\t".$nodes_idx{$node}{'weight'}."\t".$nodes_idx{$node}{'n_edges'}."\n");
+            warn("ERROR: prunning done but node ".$node." still connected (".$node->edges." edges)");
         }
     }
 
     return @excl;
+}
+
+
+
+sub remove_node_idx($$$){
+    my ($graph, $nodes_idx, $node) = @_;
+
+    # Delete node from index
+    foreach my $edge ($graph->node($node)->edges){
+        foreach my $child_node ($edge->nodes){
+            next if($node eq $child_node);
+            $nodes_idx->{$child_node->name}{'weight'} -= $edge->label;
+            $nodes_idx->{$child_node->name}{'n_edges'}--;
+        }
+    }
+
+    # Delete node from graph
+    $graph->del_node($node);
+    # Delete node from index
+    delete($nodes_idx->{$node});
+
+    return $nodes_idx
 }
