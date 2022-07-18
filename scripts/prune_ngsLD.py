@@ -34,6 +34,7 @@ parser.add_argument("--max_dist", help="Maximum distance in bp between nodes to 
 parser.add_argument("--min_weight", help="Minimum weight of an edge to assume nodes are connected.", required=True)
 parser.add_argument("--weight_type", help="How to calculate most connected node: sum of (a)bsolute edges' weight [default], sum of (e)dges' weight, or (n)umber of connections.", default="a")
 parser.add_argument("--keep_heavy", help="Keep 'heaviest' nodes, instead of removing them (default)", action='store_true')
+parser.add_argument("--print_excl", help="File to dump excluded nodes.")
 args = parser.parse_args()
 
 # import remaining necessary modules
@@ -132,6 +133,10 @@ else:
 print("Starting with "+str(G.num_vertices())+" positions with "+
 	str(G.num_edges())+" edges between them...", file=sys.stderr)
 
+# set up data frame for storing dropped nodes if requested
+if args.print_excl:
+	dropped = []
+
 # prune while edges > 0; uncomment print lines for some debugging
 while True:
 	nodes = G.num_vertices()
@@ -141,19 +146,18 @@ while True:
 	if (nodes % 1000 == 0) and nodes > 0:
 		print(str(nodes)+" positions remaining with "+str(edges)+
 			" edges between them...", file=sys.stderr)
-	#print("Nodes remaining = "+str(nodes), file=sys.stderr)
-	#print("Edges remaining = "+str(edges), file=sys.stderr)
 	incident_edges_op(G, "out", "sum", G.ep["weight"], weight)
 	max_weight = max(weight)
-	#print("Heaviest node weight = "+str(max_weight), file=sys.stderr)
 	heavy = find_vertex(G, weight, max_weight)
 	if args.keep_heavy:
-		#print("Dropping heavy neighbors...", file=sys.stderr)
 		heavy_neighbors = G.get_out_neighbors(heavy[0])
 		G.remove_vertex(heavy_neighbors, fast = True)
+		if args.print_excl:
+			dropped=dropped+[G.vp["name"][i] for i in heavy_neighbors]
 	else:
-		#print("Dropping heavy...", file=sys.stderr)
 		G.remove_vertex(heavy[0], fast = True)
+		if args.print_excl:
+			dropped=dropped+[G.vp["name"][heavy[0]]]
 
 ####### Output creation #######
 
@@ -165,9 +169,20 @@ pruned_df = pruned_df[0].str.split(pat=":", expand = True)
 pruned_df.columns = ['chr','pos']
 pruned_df.chr = pruned_df.chr.astype('string')
 pruned_df.pos = pruned_df.pos.astype('int')
-pruned_df = pruned_df.sort_values('pos')
+pruned_df = pruned_df.sort_values(['chr','pos'])
 pruned_df.to_csv(args.output, sep="_", quoting=csv.QUOTE_NONE, 
 	header = False, index = False)
+
+if args.print_excl:
+	print("Exporting dropped positions to file...", file=sys.stderr)
+	dropped_df = pd.DataFrame(dropped)
+	dropped_df = dropped_df[0].str.split(pat=":", expand = True)
+	dropped_df.columns = ['chr','pos']
+	dropped_df.chr = dropped_df.chr.astype('string')
+	dropped_df.pos = dropped_df.pos.astype('int')
+	dropped_df = dropped_df.sort_values(['chr','pos'])
+	dropped_df.to_csv(args.print_excl, sep="_", quoting=csv.QUOTE_NONE, 
+		header = False, index = False)
 
 print("Total runtime: "+str(datetime.datetime.now() - begin_time),
 	file=sys.stderr)
