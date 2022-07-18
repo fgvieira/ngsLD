@@ -35,6 +35,7 @@ parser.add_argument("--min_weight", help="Minimum weight of an edge to assume no
 parser.add_argument("--weight_type", help="How to calculate most connected node: sum of (a)bsolute edges' weight [default], sum of (e)dges' weight, or (n)umber of connections.", default="a")
 parser.add_argument("--keep_heavy", help="Keep 'heaviest' nodes, instead of removing them (default)", action='store_true')
 parser.add_argument("--print_excl", help="File to dump excluded nodes.")
+parser.add_argument("--subset", help="File with node IDs to include (one per line).")
 args = parser.parse_args()
 
 # import remaining necessary modules
@@ -122,6 +123,14 @@ if args.min_weight:
 	G.clear_filters()
 
 ####### Prune graph #######
+
+# subset sites if requested
+if args.subset:
+	with open(args.subset) as f:
+		subset_nodes = f.read().splitlines()
+	for i in G.get_vertices():
+		if G.vp["name"][i] not in subset_nodes:
+			G.remove_vertex(find_vertex(G, G.vp["name"], G.vp["name"][i]), fast = True)
 
 # print out messages at start of pruning describing starting point and method
 if args.keep_heavy:
