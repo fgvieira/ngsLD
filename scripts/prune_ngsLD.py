@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 #
-# Maintained by Zachary J. Nolen
+# prune_ngsLD.py - Prunes SNPs from ngsLD output to produce a list of 
+# sites in linkage equilibrium.
 #
-# Copyright Zachary J. Nolen
+# Zachary J. Nolen
 #
 # This script aims to prune SNPs from pairwise linkage disequilibrium 
 # estimates output by ngsLD. Not multithreaded, so only assign 
@@ -12,6 +13,8 @@
 # comparisons, so it may be best to break up input into linkage groups, 
 # prune per group, and merge afterwards. Assumes input first two fields 
 # of input are the two positions under comparison in each line.
+
+# Requires: python > 3, graph-tool, pandas
 
 ####### Housekeeping #######
 
