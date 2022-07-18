@@ -10,7 +10,8 @@
 # cluster. Memory usage seems to require RAM equivalent to ~60-90% of 
 # uncompressed input file size. Runtime depends on number of pairwise 
 # comparisons, so it may be best to break up input into linkage groups, 
-# prune per group, and merge afterwards.
+# prune per group, and merge afterwards. Assumes input first two fields 
+# of input are the two positions under comparison in each line.
 
 ####### Housekeeping #######
 
@@ -22,13 +23,15 @@ import sys
 parser = argparse.ArgumentParser(description='Prunes SNPs from ngsLD output to produce a list of sites in linkage equilibrium.')
 
 parser.add_argument("--input",
-					help="The .ld output file from ngsLD to be pruned. Can also be gzipped.",
+					help="The .ld output file from ngsLD to be pruned. Can also be gzipped. [STDIN]",
 					default=sys.stdin)
 parser.add_argument("--output",
-					help="The file to output pruned SNPs to.",
+					help="The file to output pruned SNPs to. [STDOUT]",
 					default=sys.stdout)
-parser.add_argument("--max_dist", help="Maximum distance in bp between nodes to assume they are connected.")
-parser.add_argument("--min_weight", help="Minimum weight of an edge to assume nodes are connected.")
+parser.add_argument("--field_dist", help="Field from input with distances. [3]", default=3)
+parser.add_argument("--field_weight", help="Field from input with weights. [7]", default=7)
+parser.add_argument("--max_dist", help="Maximum distance in bp between nodes to assume they are connected.", required=True)
+parser.add_argument("--min_weight", help="Minimum weight of an edge to assume nodes are connected.", required=True)
 parser.add_argument("--weight_type", help="How to calculate most connected node: sum of (a)bsolute edges' weight [default], sum of (e)dges' weight, or (n)umber of connections.", default="a")
 parser.add_argument("--keep_heavy", help="Keep 'heaviest' nodes, instead of removing them (default)", action='store_true')
 args = parser.parse_args()
@@ -51,19 +54,39 @@ def is_gz_file(filepath):
     with open(filepath, 'rb') as test_f:
         return test_f.read(2) == b'\x1f\x8b'
 
+# find out how many columns are in input
+if is_gz_file(args.input):
+	with gzip.open(args.input, mode="rt") as f:
+		reader = csv.reader(f,delimiter="\t")
+		ncol = len(next(reader))
+else:
+	with open(args.input) as f:
+		reader = csv.reader(f,delimiter="\t")
+		ncol = len(next(reader))
+		
+# set up properties based on input size (forces unused columns
+# to smaller object type to reduce memory usage)
+eprop_type_list = ["bool"] * (ncol-2)
+eprop_name_list = ["na"] * (ncol-2)
+
+eprop_type_list[int(args.field_dist)-3] = "int32_t"
+eprop_name_list[int(args.field_dist)-3] = "dist"
+eprop_type_list[int(args.field_weight)-3] = "double"
+eprop_name_list[int(args.field_weight)-3] = "weight"
+
 # read input into graph object, whether compressed or not
 if is_gz_file(args.input):
 	with gzip.open(args.input, mode="rt") as f:
 		print("Reading in data...", file=sys.stderr)
 		G = load_graph_from_csv(f, directed = False, 
-			eprop_types = ["int32_t","bool","bool","bool","double"],
-			eprop_names = ["dist","na","na","na","r2"], hashed = True, 
+			eprop_types = eprop_type_list,
+			eprop_names = eprop_name_list, hashed = True, 
 			csv_options = {'delimiter': '\t'})
 else:
 	print("Reading in data...", file=sys.stderr)
 	G = load_graph_from_csv(args.input, directed = False, 
-		eprop_types = ["int32_t","bool","bool","bool","double"],
-		eprop_names = ["dist","na","na","na","r2"], hashed = True, 
+		eprop_types = eprop_type_list,
+		eprop_names = eprop_name_list, hashed = True, 
 		csv_options = {'delimiter': '\t'})
 
 ####### Filter graph #######
@@ -73,14 +96,14 @@ del G.ep["na"]
 
 # scale weights by preferred weight method from arguments
 if args.weight_type == "a":
-	map_property_values(G.ep["r2"], G.ep["r2"], lambda x: abs(x))
+	map_property_values(G.ep["weight"], G.ep["weight"], lambda x: abs(x))
 elif args.weight_type == "n":
-	map_property_values(G.ep["r2"], G.ep["r2"], lambda x: 1)
+	map_property_values(G.ep["weight"], G.ep["weight"], lambda x: 1)
 
 # create properties needed to filter out edges where dist > threshold and
 # weight < threshold
 drop_dist = G.new_edge_property("bool")
-drop_r2 = G.new_edge_property("bool")
+drop_weight = G.new_edge_property("bool")
 weight = G.new_vertex_property("double")
 
 # determine which edges to filter by dist and weight based on input arguments
@@ -92,8 +115,8 @@ if args.max_dist:
 	G.clear_filters()
 if args.min_weight:
 	print("Filtering edges by weight...", file=sys.stderr)
-	map_property_values(G.ep["r2"], drop_r2, lambda x: x < float(args.min_weight))
-	G.set_edge_filter(drop_r2, inverted=True)
+	map_property_values(G.ep["weight"], drop_weight, lambda x: x < float(args.min_weight))
+	G.set_edge_filter(drop_weight, inverted=True)
 	G.purge_edges()
 	G.clear_filters()
 
@@ -120,7 +143,7 @@ while True:
 			" edges between them...", file=sys.stderr)
 	#print("Nodes remaining = "+str(nodes), file=sys.stderr)
 	#print("Edges remaining = "+str(edges), file=sys.stderr)
-	incident_edges_op(G, "out", "sum", G.ep["r2"], weight)
+	incident_edges_op(G, "out", "sum", G.ep["weight"], weight)
 	max_weight = max(weight)
 	#print("Heaviest node weight = "+str(max_weight), file=sys.stderr)
 	heavy = find_vertex(G, weight, max_weight)
