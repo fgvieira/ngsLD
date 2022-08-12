@@ -39,6 +39,8 @@ parser.add_argument("--weight_type", help="How to calculate most connected node:
 parser.add_argument("--keep_heavy", help="Keep 'heaviest' nodes, instead of removing them (default)", action='store_true')
 parser.add_argument("--print_excl", help="File to dump excluded nodes.")
 parser.add_argument("--subset", help="File with node IDs to include (one per line).")
+parser.add_argument("--weight_precision", help=argparse.SUPPRESS, default=4)
+parser.add_argument("--debug", help="Print heaviest node and its weight to STDERR to help debugging.", action='store_true')
 args = parser.parse_args()
 
 # import remaining necessary modules
@@ -107,7 +109,7 @@ if args.weight_type == "a":
 # weight < threshold
 drop_dist = G.new_edge_property("bool")
 drop_weight = G.new_edge_property("bool")
-weight = G.new_vertex_property("double")
+weight = G.new_vertex_property("int")
 
 # determine which edges to filter by dist and weight based on input arguments
 if args.max_dist:
@@ -151,7 +153,13 @@ print("Starting with "+str(G.num_vertices())+" positions with "+
 if args.print_excl:
 	dropped = []
 
-# prune while edges > 0; uncomment print lines for some debugging
+# convert edge weights to integer
+weight_precision = int(args.weight_precision)
+weight_precision = 10 ** weight_precision
+edge_weight = G.new_edge_property("int")
+map_property_values(G.ep["weight"], edge_weight, lambda x: int(x * weight_precision))
+
+# prune while edges > 0
 while True:
 	nodes = G.num_vertices()
 	edges = G.num_edges()
@@ -160,18 +168,22 @@ while True:
 	if (nodes % 1000 == 0) and nodes > 0:
 		print(str(nodes)+" positions remaining with "+str(edges)+
 			" edges between them...", file=sys.stderr)
-	incident_edges_op(G, "out", "sum", G.ep["weight"], weight)
+	incident_edges_op(G, "out", "sum", edge_weight, weight)
 	max_weight = max(weight)
 	heavy = find_vertex(G, weight, max_weight)
+	heavy = sorted(heavy, key = lambda x: G.vp["name"][x].lower())[0]
+
+	if args.debug:
+		print("Max weight node and weight: "+str(G.vp["name"][heavy])+" "+str(max_weight), file=sys.stderr)
 	if args.keep_heavy:
-		heavy_neighbors = G.get_out_neighbors(heavy[0])
+		heavy_neighbors = G.get_out_neighbors(heavy)
 		G.remove_vertex(heavy_neighbors, fast = True)
 		if args.print_excl:
 			dropped=dropped+[G.vp["name"][i] for i in heavy_neighbors]
 	else:
-		G.remove_vertex(heavy[0], fast = True)
+		G.remove_vertex(heavy, fast = True)
 		if args.print_excl:
-			dropped=dropped+[G.vp["name"][heavy[0]]]
+			dropped=dropped+[G.vp["name"][heavy]]
 
 ####### Output creation #######
 
