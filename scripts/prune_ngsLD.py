@@ -99,11 +99,9 @@ else:
 # get rid of unused properties (other weight measures) from graph
 del G.ep["na"]
 
-# scale weights by preferred weight method from arguments
+# use absolute weight if requested
 if args.weight_type == "a":
 	map_property_values(G.ep["weight"], G.ep["weight"], lambda x: abs(x))
-elif args.weight_type == "n":
-	map_property_values(G.ep["weight"], G.ep["weight"], lambda x: 1)
 
 # create properties needed to filter out edges where dist > threshold and
 # weight < threshold
@@ -124,6 +122,10 @@ if args.min_weight:
 	G.set_edge_filter(drop_weight, inverted=True)
 	G.purge_edges()
 	G.clear_filters()
+
+# convert filtered weights to number of edges if requested
+if args.weight_type == "n":
+	map_property_values(G.ep["weight"], G.ep["weight"], lambda x: 1)
 
 ####### Prune graph #######
 
