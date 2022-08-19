@@ -196,7 +196,7 @@ pruned_df.columns = ['chr','pos']
 pruned_df.chr = pruned_df.chr.astype('string')
 pruned_df.pos = pruned_df.pos.astype('int')
 pruned_df = pruned_df.sort_values(['chr','pos'])
-pruned_df.to_csv(args.output, sep="_", quoting=csv.QUOTE_NONE, 
+pruned_df.to_csv(args.output, sep=":", quoting=csv.QUOTE_NONE, 
 	header = False, index = False)
 
 if args.print_excl:
@@ -207,7 +207,7 @@ if args.print_excl:
 	dropped_df.chr = dropped_df.chr.astype('string')
 	dropped_df.pos = dropped_df.pos.astype('int')
 	dropped_df = dropped_df.sort_values(['chr','pos'])
-	dropped_df.to_csv(args.print_excl, sep="_", quoting=csv.QUOTE_NONE, 
+	dropped_df.to_csv(args.print_excl, sep=":", quoting=csv.QUOTE_NONE, 
 		header = False, index = False)
 
 print("Total runtime: "+str(datetime.datetime.now() - begin_time),
