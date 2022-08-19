@@ -177,13 +177,13 @@ while True:
 		print("Max weight node and weight: "+str(G.vp["name"][heavy])+" "+str(max_weight), file=sys.stderr)
 	if args.keep_heavy:
 		heavy_neighbors = G.get_out_neighbors(heavy)
-		G.remove_vertex(heavy_neighbors, fast = True)
 		if args.print_excl:
 			dropped=dropped+[G.vp["name"][i] for i in heavy_neighbors]
+		G.remove_vertex(heavy_neighbors, fast = True)
 	else:
-		G.remove_vertex(heavy, fast = True)
 		if args.print_excl:
 			dropped=dropped+[G.vp["name"][heavy]]
+		G.remove_vertex(heavy, fast = True)
 
 ####### Output creation #######
 
