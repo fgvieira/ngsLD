@@ -22,6 +22,7 @@
   * `md5sum`
   * `Perl` packages: `Getopt::Long`, `Graph::Easy`, `Math::BigFloat`, and `IO::Zlib`
   * `R` packages: `optparse`, `tools`, `ggplot2`, `reshape2`, `plyr`, `gtools`, and `LDheatmap`
+  * `python3` packages: `graph-tool`, and `pandas`
 
 To install the entire package just download the source code:
 
@@ -78,7 +79,9 @@ If both `--max_kb_dist` and `--max_snp_dist` are set to `0`, `ngsLD` will output
 
 ### Possible analyses
 ##### LD pruning
-For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts/prune_graph.pl` to prune your dataset and get a list of unlinked sites.
+For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts/prune_graph.pl` or `scripts/prune_ngsLD.py` to prune your dataset and get a list of unlinked sites.
+
+###### `scripts/prune_graph.pl`
 
     % perl scripts/prune_graph.pl --in_file testLD_2.ld --max_kb_dist 5 --min_weight 0.5 --out testLD_unlinked.id
 
@@ -88,6 +91,26 @@ For some analyses, linked sites are typically pruned since their presence can bi
 * `--out FILE`: Path to output file [STDOUT]
 
 For more advanced options, please check script help (`perl scripts/prune_graph.pl --help`).
+
+###### `scripts/prune_ngsLD.py`
+
+```
+prune_ngsLD.py --input testLD.ld --max_dist 50000 --min_weight 0.1 --out testLD_unlinked.pos
+```
+
+Required options:
+* `--input FILE`: The .ld output file from ngsLD to be pruned. Can also be gzipped. [STDIN]
+* `--output FILE`: The file to output pruned SNPs to. [STDOUT]
+* `--max_dist`: Maximum distance in bp between nodes to assume they are connected.
+* `--min_weight`: Minimum weight of an edge to assume nodes are connected.
+  
+Additional options:
+* `--field_dist`: Field from input with distances. [3]
+* `--field_weight`: Field from input with weights. [7]
+* `--weight_type`: How to calculate most connected node: sum of (a)bsolute edges' weight [default], sum of (e)dges' weight, or (n)umber of connections.
+* `--keep_heavy`: Keep 'heaviest' nodes, instead of removing them (default)
+* `--print_excl`: File to dump excluded nodes.
+* `--subset`: File with node IDs to include (one per line).
 
 #### LD decay
 If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts/fit_LDdecay.R` to fit LD decay models for ![r^2](http://latex.codecogs.com/png.latex?r^2) ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and ![D'](http://latex.codecogs.com/png.latex?D') ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)) over physical (or genetic) distance.
