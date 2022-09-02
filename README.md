@@ -55,10 +55,10 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--max_kb_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. Set to `0`(zero) to disable filter. [100]
 * `--max_snp_dist INT`: maximum distance between SNPs (in number of SNPs) to calculate LD. Set to `0` (zero) to disable filter. [0]
 * `--min_maf DOUBLE`: minimum SNP minor allele frequency. [0.001]
-* `--ignore_miss_data`: ignore missing genotype data from analyses.
+* `--ignore_miss_data`: ignore missing genotype data from analyses (e.g. MAF and haplotype frequency estimation).
 * `--call_geno`: call genotypes before running analyses.
-* `--N_thresh DOUBLE`: minimum threshold to consider site; missing data if otherwise (assumes -call_geno).
-* `--call_thresh DOUBLE`: minimum threshold to call genotype; left as is if otherwise (assumes -call_geno).
+* `--N_thresh DOUBLE`: minimum threshold to consider position; if highest GL is lower, set as missing data (assumes -call_geno).
+* `--call_thresh DOUBLE`: minimum threshold to call genotype; if highest GL is lower, left as is (assumes -call_geno).
 * `--rnd_sample DOUBLE`: proportion of comparisons to randomly sample. [1]
 * `--seed INT`: random number generator seed for random sampling (--rnd_sample).
 * `--extend_out`: print extended output (see below).
