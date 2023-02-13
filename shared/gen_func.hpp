@@ -14,7 +14,7 @@
 const uint N_GENO = 3;
 const double INF = 1e15;
 const double EPSILON = 1e-5;
-const uint64_t BUFF_LEN = 100000;
+const uint64_t BUFF_LEN = 500000;
 const uint64_t ITER_MAX = 100;
 
 // General definitions
