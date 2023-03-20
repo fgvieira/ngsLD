@@ -4,7 +4,7 @@
 
 ### Citation
 
-`ngsLD` has been accepted in [Bioinformatics](https://doi.org/10.1093/bioinformatics/btz200), so please cite it if you use it in your work:
+`ngsLD` has been published in [Bioinformatics](https://doi.org/10.1093/bioinformatics/btz200), so please cite it if you use it in your work:
 
     Fox EA, Wright AE, Fumagalli M, and Vieira FG
     ngsLD: evaluating linkage disequilibrium using genotype likelihoods
@@ -79,38 +79,19 @@ If both `--max_kb_dist` and `--max_snp_dist` are set to `0`, `ngsLD` will output
 
 ### Possible analyses
 ##### LD pruning
-For some analyses, linked sites are typically pruned since their presence can bias results. You can use the script `scripts/prune_graph.pl` or `scripts/prune_ngsLD.py` to prune your dataset and get a list of unlinked sites.
+For some analyses, linked sites are typically pruned since their presence can bias results. You can use [prune_graph](https://github.com/fgvieira/prune_graph) to prune your dataset and get a list of unlinked sites. Alternatively, you can also use the auxiliary scripts `scripts/prune_graph.pl` or `scripts/prune_ngsLD.py`, but they are much slower (specially the perl script) and no longer supported.
 
-###### `scripts/prune_graph.pl`
-
-    % perl scripts/prune_graph.pl --in_file testLD_2.ld --max_kb_dist 5 --min_weight 0.5 --out testLD_unlinked.id
-
-* `--in_file FILE`: File with input network [STDIN]
-* `--max_kb_dist INT`: Maximum distance between nodes (input file 3rd column) to assume they are connected
-* `--min_weight FLOAT`: Minimum weight (in `--weight_field`) of an edge to assume nodes are connected
-* `--out FILE`: Path to output file [STDOUT]
-
-For more advanced options, please check script help (`perl scripts/prune_graph.pl --help`).
-
-###### `scripts/prune_ngsLD.py`
-
+###### `prune_graph`
 ```
-prune_ngsLD.py --input testLD.ld --max_dist 50000 --min_weight 0.1 --out testLD_unlinked.pos
+prune_graph --in testLD_2.ld --weight-field column_7 --weight-filter "column_3 <= 50000 && column_7 >= 0.5" --out testLD_unlinked.pos
+```
+or, if you have an output with header, you can also do:
+```
+prune_graph --in testLD_2.ld --weight-field "r^2" --weight-filter "dist <= 50000 && r^2 >= 0.5" --out testLD_unlinked.pos
 ```
 
-Required options:
-* `--input FILE`: The .ld output file from ngsLD to be pruned. Can also be gzipped. [STDIN]
-* `--output FILE`: The file to output pruned SNPs to. [STDOUT]
-* `--max_dist`: Maximum distance in bp between nodes to assume they are connected.
-* `--min_weight`: Minimum weight of an edge to assume nodes are connected.
-  
-Additional options:
-* `--field_dist`: Field from input with distances. [3]
-* `--field_weight`: Field from input with weights. [7]
-* `--weight_type`: How to calculate most connected node: sum of (a)bsolute edges' weight [default], sum of (e)dges' weight, or (n)umber of connections.
-* `--keep_heavy`: Keep 'heaviest' nodes, instead of removing them (default)
-* `--print_excl`: File to dump excluded nodes.
-* `--subset`: File with node IDs to include (one per line).
+For more advanced options, please check help (`prune_graph --help`).
+
 
 #### LD decay
 If you are interested on the rate of LD decay, you can fit a distribution to your data using the script `scripts/fit_LDdecay.R` to fit LD decay models for ![r^2](http://latex.codecogs.com/png.latex?r^2) ([Hill and Weir, 1988](https://www.ncbi.nlm.nih.gov/pubmed/3376052) and [Remington et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC58755/)) and ![D'](http://latex.codecogs.com/png.latex?D') ([Abecassis et al., 2001](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234912/)) over physical (or genetic) distance.
