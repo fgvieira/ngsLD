@@ -87,7 +87,7 @@ prune_graph --in testLD_2.ld --weight-field column_7 --weight-filter "column_3 <
 ```
 or, if you have an output with header, you can also do:
 ```
-prune_graph --in testLD_2.ld --weight-field "r^2" --weight-filter "dist <= 50000 && r^2 >= 0.5" --out testLD_unlinked.pos
+prune_graph --header --in testLD_2.ld --weight-field "r^2" --weight-filter "dist <= 50000 && r^2 >= 0.5" --out testLD_unlinked.pos
 ```
 
 For more advanced options, please check help (`prune_graph --help`).
