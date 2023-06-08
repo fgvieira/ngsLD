@@ -21,7 +21,7 @@
 #include <pthread.h>
 #include "ngsLD.hpp"
 
-char const* version = "1.1.1";
+char const* version = "1.2.1";
 
 
 int main (int argc, char** argv) {
@@ -32,8 +32,8 @@ int main (int argc, char** argv) {
   init_pars(pars);
   parse_cmd_args(pars, argc, argv);
 
-  
-  
+
+
   ///////////////////////
   // Check input files //
   ///////////////////////
@@ -68,14 +68,14 @@ int main (int argc, char** argv) {
   // Initialize random seed generator
   gsl_rng* rnd_gen = gsl_rng_alloc(gsl_rng_taus);
   gsl_rng_set(rnd_gen, pars->seed);
-  
+
   // Open filehandle
   if(pars->out != NULL)
     pars->out_fh = fopen(pars->out, "w");
   if(pars->out_fh == NULL)
     error(__FUNCTION__, "cannot open output file!");
   if(pars->out_header)
-    fprintf(pars->out_fh, "#site1\tsite2\tdist\tr^2_ExpG\tD\tD'\tr^2%s\n", pars->extend_out ? "\tsample_size\tmaf1\tmaf2\thap00\thap01\thap10\thap11\thap_maf1\thap_maf2\tchi2\tloglike\tnIter" : "");
+    fprintf(pars->out_fh, "#site1\tsite2\tdist\tr2_ExpG\tD\tDp\tr2%s\n", pars->extend_out ? "\tsample_size\tmaf1\tmaf2\thap00\thap01\thap10\thap11\thap_maf1\thap_maf2\tchi2\tloglike\tnIter" : "");
 
 
 
@@ -103,7 +103,7 @@ int main (int argc, char** argv) {
     fprintf(stderr, "==> Calculating MAF for all sites...\n");
   for(uint64_t s = 0; s < pars->n_sites; s++)
     pars->maf[s] = est_maf(pars->n_ind, pars->geno_lkl[s], (double*) NULL, pars->ignore_miss_data);
-  
+
   // Data pre-processing...
   for(uint64_t i = 0; i < pars->n_ind; i++)
     for(uint64_t s = 0; s < pars->n_sites; s++){
@@ -194,7 +194,7 @@ int main (int argc, char** argv) {
   //////////////////////////
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Waiting for all threads to finish...\n");
-  
+
   threadpool_wait(pars->thread_pool, 0.1);
   if(threadpool_destroy(pars->thread_pool, threadpool_graceful) != 0)
     error(__FUNCTION__, "cannot free thread pool!");
@@ -304,10 +304,8 @@ void calc_pair_LD (void *pth){
     //D = hap_freq[0] - (1-maf[0]) * (1-maf[1]);               // P_BA - P_B * P_A
     // Calculate D'
     Dp = D / ( D < 0 ? -min(maf[0]*maf[1], (1-maf[0])*(1-maf[1])) : min(maf[0]*(1-maf[1]), (1-maf[0])*maf[1]) );
-    Dp = ( maf[0] < p->pars->min_maf || maf[1] < p->pars->min_maf ? nan("") : Dp );
     // calculate r^2
     r2 = pow(D / sqrt(maf[0] * maf[1] * (1-maf[0]) * (1-maf[1])), 2);
-    r2 = ( maf[0] < p->pars->min_maf || maf[1] < p->pars->min_maf ? nan("") : r2 );
 
 
 
