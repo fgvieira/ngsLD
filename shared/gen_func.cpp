@@ -185,7 +185,7 @@ double logsum(double a, double b, double c, double d){
 double round_dec(double val, int dec){
   dec = pow(10, dec);
   return round(val * dec) / dec;
-} 
+}
 
 
 // Remove trailing newlines from strings
