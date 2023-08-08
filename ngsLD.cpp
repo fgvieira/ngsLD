@@ -21,7 +21,7 @@
 #include <pthread.h>
 #include "ngsLD.hpp"
 
-char const* version = "1.2.1";
+char const* version = "1.2.0";
 
 
 int main (int argc, char** argv) {
@@ -82,7 +82,7 @@ int main (int argc, char** argv) {
   /////////////////////
   // Read input data //
   /////////////////////
-  // Read data from GENO file
+  // Read GENO file
   if(pars->verbose >= 1)
     fprintf(stderr, "> Reading data from file...\n");
   double ***tmp = read_geno(pars->in_geno, pars->in_bin, pars->in_probs, &pars->in_logscale, pars->n_ind, pars->n_sites);
@@ -114,14 +114,13 @@ int main (int argc, char** argv) {
       pars->expected_geno[s][i] = pars->geno_lkl[s][i][1] + 2*pars->geno_lkl[s][i][2];
     }
 
-
   // Read positions from file
   if(pars->verbose >= 1)
     fprintf(stderr, "==> Getting sites coordinates\n");
   if(pars->in_pos){
     pars->pos_dist = read_dist(pars->in_pos, (pars->in_pos_header ? 1 : 0), pars->n_sites);
     if(pars->verbose >= 6)
-      for(uint64_t s = 0; s < pars->n_sites; s++)
+      for(uint64_t s = 0; s < min(10, pars->n_sites); s++)
 	fprintf(stderr, "%lu\t%f\n", s, pars->pos_dist[s]);
     if(read_file(pars->in_pos, &pars->labels, (pars->in_pos_header ? 1 : 0)) != pars->n_sites)
       error(__FUNCTION__, "invalid number of lines in POS file");
@@ -137,12 +136,12 @@ int main (int argc, char** argv) {
     pars->labels = init_ptr(pars->n_sites, 0, "Site:#");
   }
 
-
-
   // DEBUG
-  if(pars->verbose >= 7)
+  if(pars->verbose >= 7){
+    fprintf(stderr, "==> Geno data\n");
     for(uint64_t s = 0; s < min(10, pars->n_sites); s++)
       fprintf(stderr, "%lu\t%s\t%f (%f %f %f)\n", s, pars->labels[s], pars->maf[s], pars->geno_lkl[s][0][0], pars->geno_lkl[s][0][1], pars->geno_lkl[s][0][2]);
+  }
 
 
 
@@ -265,13 +264,13 @@ void calc_pair_LD (void *pth){
     // Stop if site 1 is < min_maf
     if(p->pars->maf[s1] < p->pars->min_maf) {
       if(p->pars->verbose > 8)
-        fprintf(stderr, "\tLow MAF: %f\n", p->pars->maf[s1]);
+        fprintf(stderr, "\tLow MAF on site1: %f\n", p->pars->maf[s1]);
       break;
     }
     // Skip if site 2 is < min_maf
     if(p->pars->maf[s2] < p->pars->min_maf) {
       if(p->pars->verbose > 8)
-	fprintf(stderr, "\tLow MAF: %f\n", p->pars->maf[s2]);
+	fprintf(stderr, "\tLow MAF on site2: %f\n", p->pars->maf[s2]);
       s2++;
       continue;
     }

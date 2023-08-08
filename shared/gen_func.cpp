@@ -915,9 +915,8 @@ void call_geno(double *geno, int n_geno, bool log_scale, double N_prob_thresh, d
 
 
 
-// Calculate posterio probabilities (PP) from GLs and prior
-// GL in log-space by default, but can be in normal-space if flag set
-// prior and PP always given log-space
+// Calculate posterior probabilities (PP) from GLs and prior
+// GL, prior and PP always given log-space
 void post_prob(double *pp, double *lkl, double *prior, uint64_t n_geno){
   for(uint64_t cnt = 0; cnt < n_geno; cnt++){
     pp[cnt] = lkl[cnt];
@@ -936,11 +935,10 @@ void post_prob(double *pp, double *lkl, double *prior, uint64_t n_geno){
 
 // Calculate HWE genotype frequencies
 // MAF and F in normal-space
-// Genotype frequencies in log-space
-void calc_HWE(double *genot_freq, double freq, double F, bool log_scale){
-  genot_freq[0] = pow(1-freq,2)   +   (1-freq)*freq*F;
-  genot_freq[1] = 2*(1-freq)*freq - 2*(1-freq)*freq*F;
-  genot_freq[2] = pow(freq,2)     +   (1-freq)*freq*F;
+void calc_HWE(double *genot_freq, double maf, double F, bool log_scale){
+  genot_freq[0] = pow(1-maf,2)  +   (1-maf)*maf*F;
+  genot_freq[1] = 2*(1-maf)*maf - 2*(1-maf)*maf*F;
+  genot_freq[2] = pow(maf,2)    +   (1-maf)*maf*F;
 
   if(log_scale)
     conv_space(genot_freq, N_GENO, log);
@@ -1001,7 +999,7 @@ double est_maf(uint64_t n_ind, double **pdg, double *indF, bool ignore_miss_data
       num += pp[1] + pp[2]*(2-F);
       den += 2*pp[1] + (pp[0]+pp[2])*(2-F);
 
-      //printf("Ind: %lu; num: %f; den: %f; pp: %f %f %f; IBD: %f\n", i, num, den, pp[0], pp[1], pp[2], F);
+      //printf("Ind: %lu; gl: %f %f %f; pp: %f %f %f; IBD: %f; num: %f; den: %f\n", i, pdg[i][0], pdg[i][1], pdg[i][2], pp[0], pp[1], pp[2], F, num, den);
     }
 
     freq = num/den;
