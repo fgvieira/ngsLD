@@ -28,7 +28,7 @@ option_list <- list(
   make_option(c('--max_kb_dist'), action='store', type='numeric', default=Inf, help='Maximum distance between SNPs (in kb) to include in the fitting analysis. [%default]'),
   make_option(c('--fit_boot'), action='store', type='numeric', default=0, help='Number of bootstrap replicates for fitting CI. [%default]'),
   make_option(c('--fit_bin_size'), action='store', type='numeric', default=250, help='Bin data into fixed-sized windows for fitting. [default %default bps]'),
-  make_option(c('--fit_level'), action='store', type='numeric', default=1, help='Fitting level 0) no fitting, best of 1) Nelder-Mead, 2) and BFGS, 3) and L-BFGS-B). [%default]'),
+  make_option(c('--fit_level'), action='store', type='numeric', default=1, help='Fitting level: no fitting (0), BFGS (1), best of BFGS/Nelder-Mead (2), and best of BFGS/Nelder-Mead/L-BFGS-B (3). [%default]'),
   make_option(c('--plot_group'), action='store', type='character', default='File', help='Group variable'),
   make_option(c('--plot_data'), action='store_true', type='logical', default=FALSE, help='Also plot data points?'),
   make_option(c('--plot_bin_size'), action='store', type='numeric', default=0, help='Bin data into fixed-sized windows for plotting. [default %default bps]'),
