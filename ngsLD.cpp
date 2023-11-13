@@ -21,7 +21,7 @@
 #include <pthread.h>
 #include "ngsLD.hpp"
 
-char const* version = "1.2.0";
+char const* version = "1.2.1";
 
 
 int main (int argc, char** argv) {
@@ -74,8 +74,7 @@ int main (int argc, char** argv) {
     pars->out_fh = fopen(pars->out, "w");
   if(pars->out_fh == NULL)
     error(__FUNCTION__, "cannot open output file!");
-  if(pars->out_header)
-    fprintf(pars->out_fh, "#site1\tsite2\tdist\tr2_ExpG\tD\tDp\tr2%s\n", pars->extend_out ? "\tsample_size\tmaf1\tmaf2\thap00\thap01\thap10\thap11\thap_maf1\thap_maf2\tchi2\tloglike\tnIter" : "");
+  fprintf(pars->out_fh, "site1\tsite2\tdist\tr2_ExpG\tD\tDp\tr2%s\n", pars->extend_out ? "\tsample_size\tmaf1\tmaf2\thap00\thap01\thap10\thap11\thap_maf1\thap_maf2\tchi2\tloglike\tnIter" : "");
 
 
 

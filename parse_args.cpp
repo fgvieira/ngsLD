@@ -14,7 +14,7 @@ void init_pars(params *pars) {
   pars->in_pos_header = false;
   pars->max_kb_dist = 100;
   pars->max_snp_dist = 0;
-  pars->min_maf = 0.001;
+  pars->min_maf = 0;
   pars->ignore_miss_data = false;
   pars->call_geno = false;
   pars->N_thresh = 0;
@@ -23,7 +23,6 @@ void init_pars(params *pars) {
   pars->seed = time(NULL) + rand() % 1000;
   pars->extend_out = false;
   pars->out = NULL;
-  pars->out_header = false;
   pars->out_fh = stdout;
   pars->n_threads = 1;
   pars->verbose = 1;
@@ -121,9 +120,6 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
     case 'o':
       pars->out = optarg;
       break;
-    case 'O':
-      pars->out = optarg;
-      pars->out_header = true;
       break;
     case 't':
       pars->n_threads = atoi(optarg);
@@ -138,7 +134,7 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
 
   if(pars->verbose >= 1) {
     fprintf(stderr, "==> Input Arguments:\n");
-    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s (%s header)\n\tmax_kb_dist (kb): %lu\n\tmax_snp_dist: %lu\n\tmin_maf: %f\n\tignore_miss_data: %s\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\trnd_sample: %f\n\tseed: %lu\n\textend_out: %s\n\tout: %s (%s header)\n\tn_threads: %d\n\tverbose: %d\n\tversion: %s (%s @ %s)\n\n",
+    fprintf(stderr, "\tgeno: %s\n\tprobs: %s\n\tlog_scale: %s\n\tn_ind: %lu\n\tn_sites: %lu\n\tpos: %s (%s header)\n\tmax_kb_dist (kb): %lu\n\tmax_snp_dist: %lu\n\tmin_maf: %f\n\tignore_miss_data: %s\n\tcall_geno: %s\n\tN_thresh: %f\n\tcall_thresh: %f\n\trnd_sample: %f\n\tseed: %lu\n\textend_out: %s\n\tout: %s\n\tn_threads: %d\n\tverbose: %d\n\tversion: %s (%s @ %s)\n\n",
 	    pars->in_geno,
 	    pars->in_probs ? "true":"false",
 	    pars->in_logscale ? "true":"false",
@@ -157,7 +153,6 @@ void parse_cmd_args(params* pars, int argc, char** argv) {
 	    pars->seed,
 	    pars->extend_out ? "true":"false",
 	    pars->out,
-	    pars->out_header ? "WITH" : "WITHOUT",
 	    pars->n_threads,
 	    pars->verbose,
 	    version, __DATE__, __TIME__);

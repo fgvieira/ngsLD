@@ -54,7 +54,7 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--pos(H)` FILE: input file with site coordinates (one per line), where the 1st column stands for the chromosome/contig and the 2nd for the position (bp); remaining columns will be ignored but included in output; `--posH` assumes there is a header.
 * `--max_kb_dist DOUBLE`: maximum distance between SNPs (in Kb) to calculate LD. Set to `0`(zero) to disable filter. [100]
 * `--max_snp_dist INT`: maximum distance between SNPs (in number of SNPs) to calculate LD. Set to `0` (zero) to disable filter. [0]
-* `--min_maf DOUBLE`: minimum SNP minor allele frequency. [0.001]
+* `--min_maf DOUBLE`: minimum SNP minor allele frequency. [0]
 * `--ignore_miss_data`: ignore missing genotype data from analyses (e.g. MAF and haplotype frequency estimation).
 * `--call_geno`: call genotypes before running analyses.
 * `--N_thresh DOUBLE`: minimum threshold to consider position; if highest GL is lower, set as missing data (assumes -call_geno).
@@ -62,7 +62,7 @@ Executables are built into the main directory. If you wish to clean all binaries
 * `--rnd_sample DOUBLE`: proportion of comparisons to randomly sample. [1]
 * `--seed INT`: random number generator seed for random sampling (--rnd_sample).
 * `--extend_out`: print extended output (see below).
-* `--out(H) FILE`: output file name; `--outH` prints header. [stdout]
+* `--out FILE`: output file name. [stdout]
 * `--n_threads INT`: number of threads to use. [1]
 * `--verbose INT`: selects verbosity level. [1]
 
@@ -81,16 +81,13 @@ If both `--max_kb_dist` and `--max_snp_dist` are set to `0`, `ngsLD` will output
 ##### LD pruning
 For some analyses, linked sites are typically pruned since their presence can bias results. You can use [prune_graph](https://github.com/fgvieira/prune_graph) to prune your dataset and get a list of unlinked sites. Alternatively, you can also use the auxiliary scripts `scripts/prune_graph.pl` or `scripts/prune_ngsLD.py`, but they are much slower (specially the perl script) and no longer supported.
 
-###### `prune_graph`
-```
-prune_graph --in testLD_2.ld --weight-field column_7 --weight-filter "column_3 <= 50000 && column_7 >= 0.5" --out testLD_unlinked.pos
-```
-or, if you have an output with header, you can also do:
 ```
 prune_graph --header --in testLD_2.ld --weight-field "r2" --weight-filter "dist <= 50000 && r2 >= 0.5" --out testLD_unlinked.pos
 ```
 
 For more advanced options, please check help (`prune_graph --help`).
+
+NOTE: as of version `1.2.1` the MAF filtering has been disabled in `ngsLD`, due to potential misleading prunning results. Briefly, filtered sites due to low MAF are skipped by `ngsLD` and not included in the output file. As such, when pruning, if the output list of unlinked sites is used to extract independent sites from a dataset, all low MAF sites will also be excluded (since they were not in the `ngsLD` output). If you want to include them, either perform the MAF filtering when prunning (you need `ngsLD` extended output) or use the list of linked sites and exclude them from your dataset.
 
 
 #### LD decay
@@ -113,7 +110,7 @@ For more information, please refer to the online published supplementary data.
 
     % Rscript --vanilla --slave scripts/fit_LDdecay.R --ld_files ld_files.list --out plot.pdf
 
-* `--ld_files FILE`: file with list of LD files to fit and plot (if ommited, can be read from STDIN)
+* `--ld_files FILE`: list of LD files to fit and plot (if ommited, can be read from STDIN)
 * `--out`: Name of output plot
 * `--n_ind`: Only relevant when fitting ![r^2](http://latex.codecogs.com/png.latex?r^2) decay to specify the first model
 
@@ -128,6 +125,23 @@ NOTE: Please keep in mind that these are just general trends, and that it all de
 To plot LD blocks, we also provide a small script as an example for how it can be easily done in `R` using the `LDheatmap` package (by default, ![r^2](http://latex.codecogs.com/png.latex?r^2) is plotted).
 
     % cat testLD_2.ld | bash ../scripts/LD_blocks.sh chrSIM_21 2000 5000
+
+##### Notes
+- LD can be affected by:
+  - New mutations, genetic drift, population growth (reduces LD)
+  - Admixture, population structure, inbreeding, natural selection (increases LD)
+- ![r^2](http://latex.codecogs.com/png.latex?r^2) (preferred in popgen)
+  - ranges between `0` (no linkage) and `1` (markers in complete linkage)
+  - expected value of `1/2n`
+- ![D](http://latex.codecogs.com/png.latex?D) (hard to interpret)
+  - range depends on frequencies
+  - sign is arbitrary
+- ![D'](http://latex.codecogs.com/png.latex?D')
+  - ranges between `-1` and `1`
+  - values of `1` or `-1` mean complete linkage
+  - if frequencies are similar, high values mean the markers are good surrogates for each other
+  - overestimates LD in small samples
+  - overestimates LD when one allele is rare
 
 ### Hints
 * `ngsLD` performance seems to drop considerable under extremely low coverages (<1x); consider these cases only if you have large sample sizes (>100 individuals).
